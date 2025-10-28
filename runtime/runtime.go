@@ -12,14 +12,6 @@ const (
 	Client
 )
 
-type Action int
-
-const (
-	Store Action = iota
-	Load
-	Clear
-)
-
 func (r RunTime) String() string {
 	return [...]string{"Server", "Client"}[r]
 }
@@ -34,6 +26,23 @@ type RunTimeError struct {
 
 func (e RunTimeError) Error() string {
 	return fmt.Sprintf("Error initialising runtime; invalid runtime: %s", e.RunTimeStr)
+}
+
+type Action int
+
+const (
+	Store Action = iota
+	Load
+	Clear
+)
+
+type NumberOrString interface {
+	~int | ~float64 | ~string
+}
+
+type Message[T NumberOrString] struct {
+	Action Action
+	Data   T
 }
 
 type _Config struct {

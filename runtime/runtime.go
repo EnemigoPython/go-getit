@@ -36,11 +36,11 @@ const (
 	Clear
 )
 
-type NumberOrString interface {
-	~int | ~float64 | ~string
+type IntOrString interface {
+	~int | ~string
 }
 
-type Message[T NumberOrString] struct {
+type Message[T IntOrString] struct {
 	Action Action
 	Data   T
 }
@@ -50,11 +50,11 @@ type _Config struct {
 	Port    int
 }
 
+var Config _Config
+
 func SocketAddress() string {
 	return fmt.Sprintf("127.0.0.1:%d", Config.Port)
 }
-
-var Config _Config
 
 func parseRunTime(s string) (RunTime, error) {
 	switch strings.ToLower(s) {

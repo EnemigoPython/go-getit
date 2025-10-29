@@ -40,47 +40,53 @@ type intOrString interface {
 	~int | ~string
 }
 
-type Message[T intOrString] struct {
+type message[T intOrString] struct {
 	Action Action
 	Key    string
 	Data   T
 }
 
-type MessageInterface interface {
-	GetDataBytes() []byte
+type Message interface {
+	getDataBytes() []byte
+	GetMessageBytes() []byte
 }
 
-func (m Message[T]) GetDataBytes() []byte { return []byte{} }
+func (m message[T]) getDataBytes() []byte    { return []byte{} }
+func (m message[T]) GetMessageBytes() []byte { return []byte{} }
 
-func ConstructMessage(args []string) (MessageInterface, error) {
+func ConstructMessage(args []string) (Message, error) {
 	action, err := parseAction(args[1])
 	if err != nil {
-		return Message[int]{}, err
+		return message[int]{}, err
 	}
 	var key string
 	var data string
 	switch action {
 	case Store:
 		if len(args) < 3 {
-			return Message[int]{}, RunTimeParseError{
+			return message[int]{}, RunTimeParseError{
 				RunTimeStr: "need 3 args for store",
 			}
 		}
 		key = args[2]
 		data = args[3]
 		if i, err := strconv.Atoi(data); err == nil {
-			return Message[int]{Key: key, Data: i}, nil
+			return message[int]{Key: key, Data: i, Action: action}, nil
 		}
-		return Message[string]{Key: key, Data: data}, nil
+		return message[string]{Key: key, Data: data, Action: action}, nil
 	case Load:
 		if len(args) < 2 {
-			return Message[int]{}, RunTimeParseError{
+			return message[int]{}, RunTimeParseError{
 				RunTimeStr: "need 2 args for load",
 			}
 		}
+		key = args[2]
+		return message[int]{Key: key, Action: action}, nil
 	case Clear:
+	default:
+		return message[int]{Action: action}, nil
 	}
-	return Message[int]{}, RunTimeParseError{
+	return message[int]{}, RunTimeParseError{
 		RunTimeStr: "invalid ",
 	}
 }

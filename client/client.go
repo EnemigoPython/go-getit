@@ -7,14 +7,14 @@ import (
 	"github.com/EnemigoPython/go-getit/runtime"
 )
 
-func MakeRequest(message runtime.MessageInterface) {
+func MakeRequest(message runtime.Message) {
 	conn, err := net.Dial("tcp", runtime.SocketAddress())
 	if err != nil {
 		panic(err)
 	}
 	defer conn.Close()
 
-	bytes := message.GetDataBytes()
+	bytes := message.GetMessageBytes()
 
 	// Send a message
 	_, err = conn.Write(bytes)

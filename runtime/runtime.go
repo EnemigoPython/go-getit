@@ -12,42 +12,39 @@ const (
 	Client
 )
 
+func (e RunTimeParseError) Error() string {
+	return fmt.Sprintf("Error initialising runtime; invalid runtime: %s", e.RunTimeStr)
+}
+
 func (r RunTime) String() string {
 	return [...]string{"Server", "Client"}[r]
 }
 
-func (r RunTime) LowerString() string {
+func (r RunTime) ToLower() string {
 	return [...]string{"server", "client"}[r]
 }
 
-type RunTimeError struct {
+type RunTimeParseError struct {
 	RunTimeStr string
 }
 
-func (e RunTimeError) Error() string {
-	return fmt.Sprintf("Error initialising runtime; invalid runtime: %s", e.RunTimeStr)
-}
-
-type Action int
-
-const (
-	Store Action = iota
-	Load
-	Clear
-)
-
-type IntOrString interface {
-	~int | ~string
-}
-
-type Message[T IntOrString] struct {
-	Action Action
-	Data   T
+func parseRunTime(s string) (RunTime, error) {
+	switch strings.ToLower(s) {
+	case "":
+		return RunTime(0), RunTimeParseError{RunTimeStr: "<empty>"}
+	case Server.ToLower():
+		return Server, nil
+	case Client.ToLower():
+		return Client, nil
+	default:
+		return RunTime(0), RunTimeParseError{RunTimeStr: s}
+	}
 }
 
 type _Config struct {
-	RunTime RunTime
-	Port    int
+	RunTime   RunTime
+	Port      int
+	StoreName string
 }
 
 var Config _Config
@@ -56,27 +53,15 @@ func SocketAddress() string {
 	return fmt.Sprintf("127.0.0.1:%d", Config.Port)
 }
 
-func parseRunTime(s string) (RunTime, error) {
-	switch strings.ToLower(s) {
-	case "":
-		return RunTime(0), RunTimeError{RunTimeStr: "<empty>"}
-	case Server.LowerString():
-		return Server, nil
-	case Client.LowerString():
-		return Client, nil
-	default:
-		return RunTime(0), RunTimeError{RunTimeStr: s}
-	}
-}
-
-func ParseConfig(runTimeStr string, port int) (_Config, error) {
+func ParseConfig(runTimeStr string, port int, storeName string) (_Config, error) {
 	runTime, err := parseRunTime(runTimeStr)
 	if err != nil {
 		return _Config{}, err
 	}
 	Config = _Config{
-		RunTime: runTime,
-		Port:    port,
+		RunTime:   runTime,
+		Port:      port,
+		StoreName: storeName,
 	}
 	return Config, nil
 }

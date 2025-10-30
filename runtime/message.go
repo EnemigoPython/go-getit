@@ -155,3 +155,38 @@ func ConstructMessage(args []string) (Message, error) {
 	}
 	panic("Unreachable")
 }
+
+func decodeKey(b []byte) string {
+	keyLen := int(b[1])
+	return string(b[2 : 2+keyLen])
+}
+
+func decodeData(b []byte, offset int) int {
+	return 0
+}
+
+func DecodeMessage(b []byte) Message {
+	action := Action(b[0])
+	switch action {
+	case Store:
+		key := decodeKey(b)
+		offset := len(key) + 3
+		data := decodeData(b, offset)
+		return message[int]{
+			action: action,
+			key:    key,
+			data:   data,
+		}
+	case Load:
+		key := decodeKey(b)
+		return message[int]{
+			action: action,
+			key:    key,
+		}
+	case Clear:
+		return message[int]{
+			action: action,
+		}
+	}
+	panic("Unreachable")
+}

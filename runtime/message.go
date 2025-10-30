@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -41,9 +42,9 @@ type intOrString interface {
 }
 
 type message[T intOrString] struct {
-	Action Action
-	Key    string
-	Data   T
+	action Action
+	key    string
+	data   T
 }
 
 type Message interface {
@@ -51,11 +52,32 @@ type Message interface {
 	GetMessageBytes() []byte
 }
 
-func (m message[T]) getDataBytes() []byte    { return []byte{} }
-func (m message[T]) GetMessageBytes() []byte { return []byte{} }
+func (m message[T]) getDataBytes() []byte { return []byte{} }
+
+func (m message[T]) GetMessageBytes() []byte { return []byte("Hi!") }
+
+func (m message[T]) String() string {
+	switch m.action {
+	case Store:
+		switch d := any(m.data).(type) {
+		case int:
+			return fmt.Sprintf("%s: [%s=%d]", m.action, m.key, d)
+		case string:
+			return fmt.Sprintf("%s: [%s=%s]", m.action, m.key, d)
+		default:
+			return fmt.Sprintf("%s: [%s=%d]", m.action, m.key, d)
+		}
+	case Load:
+		return fmt.Sprintf("%s: [%s]", m.action, m.key)
+	case Clear:
+		return m.action.String()
+	default:
+		return ""
+	}
+}
 
 func ConstructMessage(args []string) (Message, error) {
-	action, err := parseAction(args[1])
+	action, err := parseAction(args[0])
 	if err != nil {
 		return message[int]{}, err
 	}
@@ -63,30 +85,30 @@ func ConstructMessage(args []string) (Message, error) {
 	var data string
 	switch action {
 	case Store:
-		if len(args) < 3 {
+		if len(args) < 2 {
 			return message[int]{}, RunTimeParseError{
 				RunTimeStr: "need 3 args for store",
 			}
 		}
-		key = args[2]
-		data = args[3]
+		key = args[1]
+		data = args[2]
 		if i, err := strconv.Atoi(data); err == nil {
-			return message[int]{Key: key, Data: i, Action: action}, nil
+			return message[int]{key: key, data: i, action: action}, nil
 		}
-		return message[string]{Key: key, Data: data, Action: action}, nil
+		return message[string]{key: key, data: data, action: action}, nil
 	case Load:
-		if len(args) < 2 {
+		if len(args) < 1 {
 			return message[int]{}, RunTimeParseError{
 				RunTimeStr: "need 2 args for load",
 			}
 		}
-		key = args[2]
-		return message[int]{Key: key, Action: action}, nil
+		key = args[1]
+		return message[int]{key: key, action: action}, nil
 	case Clear:
+		return message[int]{action: action}, nil
 	default:
-		return message[int]{Action: action}, nil
-	}
-	return message[int]{}, RunTimeParseError{
-		RunTimeStr: "invalid ",
+		return message[int]{}, RunTimeParseError{
+			RunTimeStr: "invalid action",
+		}
 	}
 }

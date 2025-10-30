@@ -4,9 +4,18 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
+
+type MessageParseError struct {
+	errorStr string
+}
+
+func (e MessageParseError) Error() string {
+	return fmt.Sprintf("Error parsing message; %s", e.errorStr)
+}
 
 type Action int
 
@@ -27,7 +36,7 @@ func (a Action) ToLower() string {
 func parseAction(s string) (Action, error) {
 	switch strings.ToLower(s) {
 	case "":
-		return Action(0), RunTimeParseError{RunTimeStr: "<empty>"}
+		return Action(0), MessageParseError{errorStr: "invalid action: <empty>"}
 	case Store.ToLower():
 		return Store, nil
 	case Load.ToLower():
@@ -35,7 +44,7 @@ func parseAction(s string) (Action, error) {
 	case Clear.ToLower():
 		return Clear, nil
 	default:
-		return Action(0), RunTimeParseError{RunTimeStr: s}
+		return Action(0), MessageParseError{errorStr: s}
 	}
 }
 
@@ -50,31 +59,35 @@ type message[T intOrString] struct {
 }
 
 type Message interface {
-	getDataBytes() []byte
 	EncodeMessage() []byte
 }
 
-func (m message[T]) getDataBytes() []byte {
+func (m message[T]) writeKeyBytes(buf *bytes.Buffer) {
+	buf.WriteByte(byte(len(m.key))) // number of bytes
+	buf.Write([]byte(m.key))
+}
+
+func (m message[T]) writeDataBytes(buf *bytes.Buffer) {
 	switch d := any(m.data).(type) {
 	case int:
-		buf := new(bytes.Buffer)
-		binary.Write(buf, binary.BigEndian, uint16(123))
-		return buf.Bytes()
+		buf.WriteByte(byte(0)) // type of data: int
+		binary.Write(buf, binary.BigEndian, uint16(d))
 	case string:
-		return []byte(d)
+		buf.WriteByte(byte(1))      // type of data: string
+		buf.WriteByte(byte(len(d))) // number of bytes
+		buf.Write([]byte(d))
 	}
-	panic("Unreachable")
 }
 
 func (m message[T]) EncodeMessage() []byte {
-	var buf bytes.Buffer
+	buf := new(bytes.Buffer)
 	buf.WriteByte(byte(m.action))
 	switch m.action {
 	case Store:
-		buf.Write([]byte(m.key))
-		buf.Write(m.getDataBytes())
+		m.writeKeyBytes(buf)
+		m.writeDataBytes(buf)
 	case Load:
-		buf.Write([]byte(m.key))
+		m.writeKeyBytes(buf)
 	case Clear:
 		// no extra data fields needed
 	}
@@ -111,20 +124,28 @@ func ConstructMessage(args []string) (Message, error) {
 	switch action {
 	case Store:
 		if len(args) < 2 {
-			return message[int]{}, RunTimeParseError{
-				RunTimeStr: "need 3 args for store",
+			return message[int]{}, MessageParseError{
+				errorStr: "need 3 args for store",
 			}
 		}
 		key = args[1]
 		data = args[2]
 		if i, err := strconv.Atoi(data); err == nil {
+			if i < 0 || i > math.MaxUint16 {
+				return message[int]{}, MessageParseError{
+					errorStr: fmt.Sprintf(
+						"invalid int data (must be 0-%d)",
+						math.MaxUint16,
+					),
+				}
+			}
 			return message[int]{key: key, data: i, action: action}, nil
 		}
 		return message[string]{key: key, data: data, action: action}, nil
 	case Load:
 		if len(args) < 1 {
-			return message[int]{}, RunTimeParseError{
-				RunTimeStr: "need 2 args for load",
+			return message[int]{}, MessageParseError{
+				errorStr: "need 2 args for load",
 			}
 		}
 		key = args[1]

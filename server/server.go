@@ -18,7 +18,7 @@ func Run() {
 			defer c.Close()
 			buf := make([]byte, 1024)
 			n, _ := c.Read(buf)
-			fmt.Println("Received:", string(buf[:n]))
+			fmt.Printf("Message bytes: % x\n", buf[:n])
 			c.Write([]byte("Hello back!"))
 		}(conn)
 	}

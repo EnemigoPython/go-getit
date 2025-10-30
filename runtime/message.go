@@ -1,6 +1,8 @@
 package runtime
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"strconv"
 	"strings"
@@ -38,7 +40,7 @@ func parseAction(s string) (Action, error) {
 }
 
 type intOrString interface {
-	~int | ~string
+	int | string
 }
 
 type message[T intOrString] struct {
@@ -49,12 +51,35 @@ type message[T intOrString] struct {
 
 type Message interface {
 	getDataBytes() []byte
-	GetMessageBytes() []byte
+	EncodeMessage() []byte
 }
 
-func (m message[T]) getDataBytes() []byte { return []byte{} }
+func (m message[T]) getDataBytes() []byte {
+	switch d := any(m.data).(type) {
+	case int:
+		buf := new(bytes.Buffer)
+		binary.Write(buf, binary.BigEndian, uint16(123))
+		return buf.Bytes()
+	case string:
+		return []byte(d)
+	}
+	panic("Unreachable")
+}
 
-func (m message[T]) GetMessageBytes() []byte { return []byte("Hi!") }
+func (m message[T]) EncodeMessage() []byte {
+	var buf bytes.Buffer
+	buf.WriteByte(byte(m.action))
+	switch m.action {
+	case Store:
+		buf.Write([]byte(m.key))
+		buf.Write(m.getDataBytes())
+	case Load:
+		buf.Write([]byte(m.key))
+	case Clear:
+		// no extra data fields needed
+	}
+	return buf.Bytes()
+}
 
 func (m message[T]) String() string {
 	switch m.action {
@@ -65,7 +90,7 @@ func (m message[T]) String() string {
 		case string:
 			return fmt.Sprintf("%s: [%s=%s]", m.action, m.key, d)
 		default:
-			return fmt.Sprintf("%s: [%s=%d]", m.action, m.key, d)
+			panic("Unreachable")
 		}
 	case Load:
 		return fmt.Sprintf("%s: [%s]", m.action, m.key)
@@ -106,9 +131,6 @@ func ConstructMessage(args []string) (Message, error) {
 		return message[int]{key: key, action: action}, nil
 	case Clear:
 		return message[int]{action: action}, nil
-	default:
-		return message[int]{}, RunTimeParseError{
-			RunTimeStr: "invalid action",
-		}
 	}
+	panic("Unreachable")
 }

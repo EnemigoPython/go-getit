@@ -14,7 +14,7 @@ func MakeRequest(message runtime.Message) {
 	}
 	defer conn.Close()
 
-	bytes := message.GetMessageBytes()
+	bytes := message.EncodeMessage()
 
 	// Send a message
 	_, err = conn.Write(bytes)
@@ -29,5 +29,5 @@ func MakeRequest(message runtime.Message) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Received:", string(buf[:n]))
+	fmt.Println("Response:", string(buf[:n]))
 }

@@ -61,13 +61,13 @@ type Request interface {
 	GetAction() Action
 }
 
-func (m request[T]) writeKeyBytes(buf *bytes.Buffer) {
-	buf.WriteByte(byte(len(m.key))) // number of bytes
-	buf.Write([]byte(m.key))
+func (r request[T]) writeKeyBytes(buf *bytes.Buffer) {
+	buf.WriteByte(byte(len(r.key))) // number of bytes
+	buf.Write([]byte(r.key))
 }
 
-func (m request[T]) writeDataBytes(buf *bytes.Buffer) {
-	switch d := any(m.data).(type) {
+func (r request[T]) writeDataBytes(buf *bytes.Buffer) {
+	switch d := any(r.data).(type) {
 	case int:
 		buf.WriteByte(byte(0)) // type of data: int
 		binary.Write(buf, binary.BigEndian, uint16(d))
@@ -78,39 +78,39 @@ func (m request[T]) writeDataBytes(buf *bytes.Buffer) {
 	}
 }
 
-func (m request[T]) EncodeRequest() []byte {
+func (r request[T]) EncodeRequest() []byte {
 	buf := new(bytes.Buffer)
-	buf.WriteByte(byte(m.action))
-	switch m.action {
+	buf.WriteByte(byte(r.action))
+	switch r.action {
 	case Store:
-		m.writeKeyBytes(buf)
-		m.writeDataBytes(buf)
+		r.writeKeyBytes(buf)
+		r.writeDataBytes(buf)
 	case Load:
-		m.writeKeyBytes(buf)
+		r.writeKeyBytes(buf)
 	case Clear:
 		// no extra data fields needed
 	}
 	return buf.Bytes()
 }
 
-func (m request[T]) GetAction() Action { return m.action }
+func (r request[T]) GetAction() Action { return r.action }
 
-func (m request[T]) String() string {
+func (r request[T]) String() string {
 	var body string
-	switch m.action {
+	switch r.action {
 	case Store:
-		switch d := any(m.data).(type) {
+		switch d := any(r.data).(type) {
 		case int:
-			body = fmt.Sprintf("%s [%s: %d]", m.action, m.key, d)
+			body = fmt.Sprintf("%s [%s: %d]", r.action, r.key, d)
 		case string:
-			body = fmt.Sprintf("%s [%s: '%s']", m.action, m.key, d)
+			body = fmt.Sprintf("%s [%s: '%s']", r.action, r.key, d)
 		default:
 			panic("Unreachable")
 		}
 	case Load:
-		body = fmt.Sprintf("%s [%s]", m.action, m.key)
+		body = fmt.Sprintf("%s [%s]", r.action, r.key)
 	case Clear:
-		body = m.action.String()
+		body = r.action.String()
 	default:
 		panic("Unreachable")
 	}

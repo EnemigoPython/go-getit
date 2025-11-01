@@ -18,3 +18,31 @@ func OpenStore() {
 
 	fmt.Println("File opened or created successfully:", filename)
 }
+
+func store(request runtime.Request) runtime.Response {
+	r := runtime.ConstructResponse(runtime.Status(0))
+	return r
+}
+
+func load(request runtime.Request) runtime.Response {
+	r := runtime.ConstructResponse(runtime.Status(0))
+	return r
+}
+
+func clear(request runtime.Request) runtime.Response {
+	r := runtime.ConstructResponse(runtime.Status(0))
+	return r
+}
+
+func ProcessRequest(request runtime.Request) {
+	var response runtime.Response
+	switch request.GetAction() {
+	case runtime.Store:
+		response = store(request)
+	case runtime.Load:
+		response = load(request)
+	case runtime.Clear:
+		response = clear(request)
+	}
+	fmt.Println(response)
+}

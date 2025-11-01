@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/EnemigoPython/go-getit/runtime"
+	"github.com/EnemigoPython/go-getit/store"
 )
 
 func Run() {
@@ -18,11 +19,12 @@ func Run() {
 			defer c.Close()
 			buf := make([]byte, 1024)
 			n, _ := c.Read(buf)
-			messageBytes := buf[:n]
+			requestBytes := buf[:n]
 			// TODO: show only if in debug mode
-			fmt.Printf("Message bytes: % x\n", messageBytes)
-			message := runtime.DecodeRequest(messageBytes)
-			fmt.Println(message)
+			fmt.Printf("Request bytes: % x\n", requestBytes)
+			request := runtime.DecodeRequest(requestBytes)
+			fmt.Println(request)
+			store.ProcessRequest(request)
 			c.Write([]byte("Hello back!"))
 		}(conn)
 	}

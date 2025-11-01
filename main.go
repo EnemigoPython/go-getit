@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	runTimeFlag := flag.String("runtime", "", "The runtime mode to execute")
+	runTimeFlag := flag.String("runtime", "client", "The runtime mode to execute")
 	portFlag := flag.Int("port", 6969, "The port the server will run on")
 	storeNameFlag := flag.String("store", "store", "The name of the store file")
 	flag.Parse()
@@ -24,11 +24,11 @@ func main() {
 	case runtime.Server:
 		server.Run()
 	case runtime.Client:
-		message, err := runtime.ConstructMessage(flag.Args())
+		request, err := runtime.ConstructRequest(flag.Args())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		client.MakeRequest(message)
+		client.MakeRequest(request)
 	}
 }

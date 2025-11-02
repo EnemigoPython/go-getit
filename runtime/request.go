@@ -67,26 +67,41 @@ type request[T types.IntOrString] struct {
 }
 
 type Request interface {
-	EncodeRequest() []byte
 	GetAction() Action
 	GetKey() string
 	GetId() uint8
+	EncodeRequest() []byte
+	EncodeFileBytes() []byte
 }
 
-func (r request[T]) writeKeyBytes(buf *bytes.Buffer) {
-	buf.WriteByte(byte(len(r.key))) // number of bytes
+func (r request[T]) GetAction() Action { return r.action }
+func (r request[T]) GetKey() string    { return r.key }
+func (r request[T]) GetId() uint8      { return r.id }
+
+func (r request[T]) writeKeyBytes(buf *bytes.Buffer, pad bool) {
+	keyLen := len(r.key)
+	buf.WriteByte(byte(keyLen)) // number of bytes
 	buf.Write([]byte(r.key))
+	if pad {
+		paddedBytes := make([]byte, 32-keyLen)
+		buf.Write(paddedBytes)
+	}
 }
 
-func (r request[T]) writeDataBytes(buf *bytes.Buffer) {
+func (r request[T]) writeDataBytes(buf *bytes.Buffer, pad bool) {
 	switch d := any(r.data).(type) {
 	case int:
 		buf.WriteByte(byte(0)) // type of data: int
 		binary.Write(buf, binary.BigEndian, int32(d))
 	case string:
+		dataLen := len(d)
 		buf.WriteByte(byte(1))      // type of data: string
 		buf.WriteByte(byte(len(d))) // number of bytes
 		buf.Write([]byte(d))
+		if pad {
+			paddedBytes := make([]byte, 32-dataLen)
+			buf.Write(paddedBytes)
+		}
 	}
 }
 
@@ -95,19 +110,23 @@ func (r request[T]) EncodeRequest() []byte {
 	buf.WriteByte(byte(r.action))
 	switch r.action {
 	case Store:
-		r.writeKeyBytes(buf)
-		r.writeDataBytes(buf)
+		r.writeKeyBytes(buf, false)
+		r.writeDataBytes(buf, false)
 	case Load:
-		r.writeKeyBytes(buf)
+		r.writeKeyBytes(buf, false)
 	case Clear:
 		// no extra data fields needed
 	}
 	return buf.Bytes()
 }
 
-func (r request[T]) GetAction() Action { return r.action }
-func (r request[T]) GetKey() string    { return r.key }
-func (r request[T]) GetId() uint8      { return r.id }
+func (r request[T]) EncodeFileBytes() []byte {
+	buf := new(bytes.Buffer)
+	buf.WriteByte(1)            // set first byte to signal stored
+	r.writeKeyBytes(buf, true)  // write key with padding
+	r.writeDataBytes(buf, true) // write data with padding
+	return buf.Bytes()
+}
 
 func (r request[T]) String() string {
 	var body string

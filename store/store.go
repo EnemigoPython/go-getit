@@ -7,7 +7,7 @@ import (
 	"github.com/EnemigoPython/go-getit/runtime"
 )
 
-const entrySize uint64 = 64
+const entrySize uint64 = 68
 
 type _storeMetadata struct {
 	size    uint64
@@ -43,12 +43,17 @@ func OpenStore() (*os.File, error) {
 	return file, err
 }
 
-func store(request runtime.Request) runtime.Response {
+func store(request runtime.Request, file *os.File) runtime.Response {
+	hash := hashKey(request.GetKey())
+	index := entryIndex(hash)
+	if runtime.Config.Debug {
+		fmt.Printf("Hash: %d, Index: %d\n", hash, index)
+	}
 	r := runtime.ConstructResponse(request, runtime.Ok, 0)
 	return r
 }
 
-func load(request runtime.Request) runtime.Response {
+func load(request runtime.Request, file *os.File) runtime.Response {
 	hash := hashKey(request.GetKey())
 	index := entryIndex(hash)
 	if runtime.Config.Debug {
@@ -62,20 +67,20 @@ func load(request runtime.Request) runtime.Response {
 	return r
 }
 
-func clear(request runtime.Request) runtime.Response {
+func clear(request runtime.Request, file *os.File) runtime.Response {
 	r := runtime.ConstructResponse(request, runtime.Ok, "A")
 	return r
 }
 
-func ProcessRequest(request runtime.Request) {
+func ProcessRequest(request runtime.Request, file *os.File) {
 	var response runtime.Response
 	switch request.GetAction() {
 	case runtime.Store:
-		response = store(request)
+		response = store(request, file)
 	case runtime.Load:
-		response = load(request)
+		response = load(request, file)
 	case runtime.Clear:
-		response = clear(request)
+		response = clear(request, file)
 	}
 	fmt.Println(response)
 }

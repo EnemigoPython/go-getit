@@ -146,6 +146,11 @@ func ConstructRequest(args []string) (Request, error) {
 			}
 		}
 		key = args[1]
+		if len(key) > 32 {
+			return request[int]{}, RequestParseError{
+				errorStr: "Key must be less than 32 characters",
+			}
+		}
 		data = args[2]
 		if i, err := strconv.Atoi(data); err == nil {
 			if i < math.MinInt32 || i > math.MaxInt32 {
@@ -159,6 +164,11 @@ func ConstructRequest(args []string) (Request, error) {
 			}
 			return request[int]{key: key, data: i, action: action}, nil
 		}
+		if len(data) > 32 {
+			return request[int]{}, RequestParseError{
+				errorStr: "Value must be less than 32 characters",
+			}
+		}
 		return request[string]{key: key, data: data, action: action}, nil
 	case Load:
 		if len(args) < 1 {
@@ -167,6 +177,11 @@ func ConstructRequest(args []string) (Request, error) {
 			}
 		}
 		key = args[1]
+		if len(key) > 32 {
+			return request[int]{}, RequestParseError{
+				errorStr: "Key must be less than 32 characters",
+			}
+		}
 		return request[int]{key: key, action: action}, nil
 	case Clear:
 		return request[int]{action: action}, nil

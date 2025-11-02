@@ -82,7 +82,7 @@ func (r request[T]) writeDataBytes(buf *bytes.Buffer) {
 	switch d := any(r.data).(type) {
 	case int:
 		buf.WriteByte(byte(0)) // type of data: int
-		binary.Write(buf, binary.BigEndian, uint16(d))
+		binary.Write(buf, binary.BigEndian, int32(d))
 	case string:
 		buf.WriteByte(byte(1))      // type of data: string
 		buf.WriteByte(byte(len(d))) // number of bytes
@@ -115,14 +115,14 @@ func (r request[T]) String() string {
 	case Store:
 		switch d := any(r.data).(type) {
 		case int:
-			body = fmt.Sprintf("%s [%s: %d]", r.action, r.key, d)
+			body = fmt.Sprintf("%s[%s:%d]", r.action, r.key, d)
 		case string:
-			body = fmt.Sprintf("%s [%s: '%s']", r.action, r.key, d)
+			body = fmt.Sprintf("%s[%s:'%s']", r.action, r.key, d)
 		default:
 			panic("Unreachable")
 		}
 	case Load:
-		body = fmt.Sprintf("%s [%s]", r.action, r.key)
+		body = fmt.Sprintf("%s[%s]", r.action, r.key)
 	case Clear:
 		body = r.action.String()
 	default:
@@ -148,11 +148,12 @@ func ConstructRequest(args []string) (Request, error) {
 		key = args[1]
 		data = args[2]
 		if i, err := strconv.Atoi(data); err == nil {
-			if i < 0 || i > math.MaxUint16 {
+			if i < math.MinInt32 || i > math.MaxInt32 {
 				return request[int]{}, RequestParseError{
 					errorStr: fmt.Sprintf(
-						"invalid int data (must be 0-%d)",
-						math.MaxUint16,
+						"invalid int data (must be %d-%d)",
+						math.MinInt32,
+						math.MaxInt32,
 					),
 				}
 			}
@@ -190,11 +191,11 @@ func DecodeRequest(b []byte) Request {
 		key := decodeKey(b)
 		offset := len(key) + 2
 		if b[offset] == 0 {
-			data := int(binary.BigEndian.Uint16(b[offset+1:]))
+			data := int32(binary.BigEndian.Uint32(b[offset+1:]))
 			return request[int]{
 				action: action,
 				key:    key,
-				data:   data,
+				data:   int(data),
 				id:     generateId(),
 			}
 		}

@@ -13,6 +13,12 @@ func Run() {
 	fmt.Println("Listening on port", runtime.Config.Port)
 	defer ln.Close()
 
+	file, err := store.OpenStore()
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
 	for {
 		conn, _ := ln.Accept()
 		go func(c net.Conn) {

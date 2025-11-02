@@ -25,6 +25,7 @@ func (s Status) ToLower() string {
 type response[T types.IntOrString] struct {
 	status Status
 	data   T
+	id     uint8
 }
 
 type Response interface {
@@ -38,22 +39,20 @@ func (r response[T]) String() string {
 	switch r.status {
 	case Ok:
 		body = fmt.Sprintf("%s,", r.status)
-	case NotFound:
-		body = fmt.Sprintf("%s,", r.status)
-	case ServerError:
-		body = fmt.Sprintf("%s,", r.status)
+	case NotFound, ServerError:
+		body = r.status.String()
 	default:
 		panic("Unreachable")
 	}
-	return fmt.Sprintf("Response<%s>", body)
+	return fmt.Sprintf("Response(%d)<%s>", r.id, body)
 }
 
-func ConstructResponse[T types.IntOrString](status Status, data T) Response {
+func ConstructResponse[T types.IntOrString](request Request, status Status, data T) Response {
 	switch v := any(data).(type) {
 	case int:
-		return response[int]{data: v}
+		return response[int]{status: status, data: v, id: request.GetId()}
 	case string:
-		return response[string]{data: v}
+		return response[string]{status: status, data: v, id: request.GetId()}
 	}
 	panic("Unreachable")
 }

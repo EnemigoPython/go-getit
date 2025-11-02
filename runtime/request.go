@@ -69,6 +69,8 @@ type request[T types.IntOrString] struct {
 type Request interface {
 	EncodeRequest() []byte
 	GetAction() Action
+	GetKey() string
+	GetId() uint8
 }
 
 func (r request[T]) writeKeyBytes(buf *bytes.Buffer) {
@@ -104,6 +106,8 @@ func (r request[T]) EncodeRequest() []byte {
 }
 
 func (r request[T]) GetAction() Action { return r.action }
+func (r request[T]) GetKey() string    { return r.key }
+func (r request[T]) GetId() uint8      { return r.id }
 
 func (r request[T]) String() string {
 	var body string

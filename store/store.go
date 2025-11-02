@@ -7,30 +7,63 @@ import (
 	"github.com/EnemigoPython/go-getit/runtime"
 )
 
-func OpenStore() {
-	filename := runtime.Config.StoreName
+const entrySize uint64 = 64
+
+type _storeMetadata struct {
+	size    uint64
+	entries uint64
+}
+
+var storeMetadata _storeMetadata
+
+func entryIndex(i uint64) uint64 {
+	return i * entrySize
+}
+
+func hashKey(key string) (res uint64) {
+	for i, r := range key {
+		res += uint64((i + 1) * int(r))
+	}
+	return
+}
+
+func OpenStore() (*os.File, error) {
+	filename := runtime.FileName()
 	file, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
-		fmt.Println("Error opening file:", err)
-		return
+		return nil, err
 	}
-	defer file.Close()
-
-	fmt.Println("File opened or created successfully:", filename)
+	info, _ := os.Stat(filename)
+	fileSize := info.Size()
+	storeMetadata = _storeMetadata{
+		size:    uint64(fileSize),
+		entries: uint64(fileSize) / entrySize,
+	}
+	fmt.Printf("Opened store '%s'\n", filename)
+	return file, err
 }
 
 func store(request runtime.Request) runtime.Response {
-	r := runtime.ConstructResponse(runtime.Status(0), 0)
+	r := runtime.ConstructResponse(request, runtime.Ok, 0)
 	return r
 }
 
 func load(request runtime.Request) runtime.Response {
-	r := runtime.ConstructResponse(runtime.Status(0), 0)
+	hash := hashKey(request.GetKey())
+	index := entryIndex(hash)
+	if runtime.Config.Debug {
+		fmt.Printf("Hash: %d, Index: %d\n", hash, index)
+	}
+	if storeMetadata.size < index {
+		r := runtime.ConstructResponse(request, runtime.NotFound, 0)
+		return r
+	}
+	r := runtime.ConstructResponse(request, runtime.Ok, 0)
 	return r
 }
 
 func clear(request runtime.Request) runtime.Response {
-	r := runtime.ConstructResponse(runtime.Status(0), "A")
+	r := runtime.ConstructResponse(request, runtime.Ok, "A")
 	return r
 }
 

@@ -54,6 +54,10 @@ func SocketAddress() string {
 	return fmt.Sprintf("127.0.0.1:%d", Config.Port)
 }
 
+func FileName() string {
+	return fmt.Sprintf("%s.bin", Config.StoreName)
+}
+
 func ParseConfig(
 	runTimeStr string,
 	port int,

@@ -45,6 +45,7 @@ type _Config struct {
 	RunTime   RunTime
 	Port      int
 	StoreName string
+	Debug     bool
 }
 
 var Config _Config
@@ -53,7 +54,12 @@ func SocketAddress() string {
 	return fmt.Sprintf("127.0.0.1:%d", Config.Port)
 }
 
-func ParseConfig(runTimeStr string, port int, storeName string) (_Config, error) {
+func ParseConfig(
+	runTimeStr string,
+	port int,
+	storeName string,
+	debug bool,
+) (_Config, error) {
 	runTime, err := parseRunTime(runTimeStr)
 	if err != nil {
 		return _Config{}, err
@@ -62,6 +68,7 @@ func ParseConfig(runTimeStr string, port int, storeName string) (_Config, error)
 		RunTime:   runTime,
 		Port:      port,
 		StoreName: storeName,
+		Debug:     debug,
 	}
 	return Config, nil
 }

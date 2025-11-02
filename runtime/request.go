@@ -50,10 +50,20 @@ func parseAction(s string) (Action, error) {
 	}
 }
 
+var requestCounter uint8
+
+func generateId() uint8 {
+	go func() {
+		requestCounter++
+	}()
+	return requestCounter
+}
+
 type request[T types.IntOrString] struct {
 	action Action
 	key    string
 	data   T
+	id     uint8
 }
 
 type Request interface {
@@ -114,7 +124,7 @@ func (r request[T]) String() string {
 	default:
 		panic("Unreachable")
 	}
-	return fmt.Sprintf("Request<%s>", body)
+	return fmt.Sprintf("Request(%d)<%s>", r.id, body)
 }
 
 func ConstructRequest(args []string) (Request, error) {
@@ -181,6 +191,7 @@ func DecodeRequest(b []byte) Request {
 				action: action,
 				key:    key,
 				data:   data,
+				id:     generateId(),
 			}
 		}
 		data := decodeStringData(b[offset+1:])
@@ -188,16 +199,19 @@ func DecodeRequest(b []byte) Request {
 			action: action,
 			key:    key,
 			data:   data,
+			id:     generateId(),
 		}
 	case Load:
 		key := decodeKey(b)
 		return request[int]{
 			action: action,
 			key:    key,
+			id:     generateId(),
 		}
 	case Clear:
 		return request[int]{
 			action: action,
+			id:     generateId(),
 		}
 	}
 	panic("Unreachable")

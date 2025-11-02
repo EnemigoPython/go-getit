@@ -20,8 +20,9 @@ func Run() {
 			buf := make([]byte, 1024)
 			n, _ := c.Read(buf)
 			requestBytes := buf[:n]
-			// TODO: show only if in debug mode
-			fmt.Printf("Request bytes: % x\n", requestBytes)
+			if runtime.Config.Debug {
+				fmt.Printf("Request bytes: % x\n", requestBytes)
+			}
 			request := runtime.DecodeRequest(requestBytes)
 			fmt.Println(request)
 			store.ProcessRequest(request)

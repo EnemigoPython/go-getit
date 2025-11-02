@@ -28,12 +28,10 @@ type response[T types.IntOrString] struct {
 }
 
 type Response interface {
-	GetResponseStatus() Status
+	GetStatus() Status
 }
 
-func (r response[T]) GetResponseStatus() Status {
-	return r.status
-}
+func (r response[T]) GetStatus() Status { return r.status }
 
 func (r response[T]) String() string {
 	var body string
@@ -50,6 +48,12 @@ func (r response[T]) String() string {
 	return fmt.Sprintf("Response<%s>", body)
 }
 
-func ConstructResponse(status Status) Response {
-	return response[int]{data: 0}
+func ConstructResponse[T types.IntOrString](status Status, data T) Response {
+	switch v := any(data).(type) {
+	case int:
+		return response[int]{data: v}
+	case string:
+		return response[string]{data: v}
+	}
+	panic("Unreachable")
 }

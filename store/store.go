@@ -20,17 +20,17 @@ func OpenStore() {
 }
 
 func store(request runtime.Request) runtime.Response {
-	r := runtime.ConstructResponse(runtime.Status(0))
+	r := runtime.ConstructResponse(runtime.Status(0), 0)
 	return r
 }
 
 func load(request runtime.Request) runtime.Response {
-	r := runtime.ConstructResponse(runtime.Status(0))
+	r := runtime.ConstructResponse(runtime.Status(0), 0)
 	return r
 }
 
 func clear(request runtime.Request) runtime.Response {
-	r := runtime.ConstructResponse(runtime.Status(0))
+	r := runtime.ConstructResponse(runtime.Status(0), "A")
 	return r
 }
 

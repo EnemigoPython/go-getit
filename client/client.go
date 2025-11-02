@@ -21,7 +21,9 @@ func MakeRequest(request runtime.Request) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(request)
+	if runtime.Config.Debug {
+		fmt.Println(request)
+	}
 
 	// Read the response
 	buf := make([]byte, 1024)

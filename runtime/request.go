@@ -59,6 +59,8 @@ func generateId() uint8 {
 	return requestCounter
 }
 
+const maxStringLen = 31
+
 type request[T types.IntOrString] struct {
 	action Action
 	key    string
@@ -93,13 +95,17 @@ func (r request[T]) writeDataBytes(buf *bytes.Buffer, pad bool) {
 	case int:
 		buf.WriteByte(byte(0)) // type of data: int
 		binary.Write(buf, binary.BigEndian, int32(d))
+		if pad {
+			paddedBytes := make([]byte, 28)
+			buf.Write(paddedBytes)
+		}
 	case string:
 		dataLen := len(d)
 		buf.WriteByte(byte(1))      // type of data: string
 		buf.WriteByte(byte(len(d))) // number of bytes
 		buf.Write([]byte(d))
 		if pad {
-			paddedBytes := make([]byte, 32-dataLen)
+			paddedBytes := make([]byte, maxStringLen-dataLen)
 			buf.Write(paddedBytes)
 		}
 	}
@@ -165,9 +171,12 @@ func ConstructRequest(args []string) (Request, error) {
 			}
 		}
 		key = args[1]
-		if len(key) > 32 {
+		if len(key) > maxStringLen {
 			return request[int]{}, RequestParseError{
-				errorStr: "Key must be less than 32 characters",
+				errorStr: fmt.Sprintf(
+					"Key must be less than %d characters",
+					maxStringLen,
+				),
 			}
 		}
 		data = args[2]
@@ -183,9 +192,12 @@ func ConstructRequest(args []string) (Request, error) {
 			}
 			return request[int]{key: key, data: i, action: action}, nil
 		}
-		if len(data) > 32 {
+		if len(data) > maxStringLen {
 			return request[int]{}, RequestParseError{
-				errorStr: "Value must be less than 32 characters",
+				errorStr: fmt.Sprintf(
+					"Data must be less than %d characters",
+					maxStringLen,
+				),
 			}
 		}
 		return request[string]{key: key, data: data, action: action}, nil
@@ -196,9 +208,12 @@ func ConstructRequest(args []string) (Request, error) {
 			}
 		}
 		key = args[1]
-		if len(key) > 32 {
+		if len(key) > maxStringLen {
 			return request[int]{}, RequestParseError{
-				errorStr: "Key must be less than 32 characters",
+				errorStr: fmt.Sprintf(
+					"Key must be less than %d characters",
+					maxStringLen,
+				),
 			}
 		}
 		return request[int]{key: key, action: action}, nil

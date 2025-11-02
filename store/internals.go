@@ -1,6 +1,7 @@
 package store
 
 import (
+	"encoding/binary"
 	"fmt"
 )
 
@@ -35,6 +36,18 @@ func (e DecodeFileError) Error() string {
 func decodeFileBytes(b []byte) (int, error) {
 	if b[0] == 0 {
 		return 0, DecodeFileError{errorStr: "Empty entry"}
+	}
+	keyLen := int(b[1])
+	key := string(b[2 : 2+keyLen])
+	fmt.Println(key)
+	dataType := int(b[34])
+	if dataType == 1 {
+		valLen := int(b[35])
+		val := string(b[36 : 36+valLen])
+		fmt.Println(val)
+	} else {
+		val := int32(binary.BigEndian.Uint32(b[35:39]))
+		fmt.Println(val)
 	}
 	x := 0
 	return x, nil

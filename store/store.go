@@ -67,6 +67,7 @@ func load(request runtime.Request, file *os.File) runtime.Response {
 		r := runtime.ConstructResponse(request, runtime.ServerError, 0)
 		return r
 	}
+	decodeFileBytes(buf)
 	r := runtime.ConstructResponse(request, runtime.Ok, 0)
 	return r
 }

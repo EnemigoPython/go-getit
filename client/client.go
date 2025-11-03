@@ -35,4 +35,5 @@ func MakeRequest(request runtime.Request) {
 	if runtime.Config.Debug {
 		fmt.Println("Response:", response)
 	}
+	fmt.Println(response.DataPayload())
 }

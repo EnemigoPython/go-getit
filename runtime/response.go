@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"log"
+	"strconv"
 
 	"github.com/EnemigoPython/go-getit/types"
 )
@@ -34,6 +36,7 @@ type response[T types.IntOrString] struct {
 type Response interface {
 	GetStatus() Status
 	EncodeResponse() []byte
+	DataPayload() string
 }
 
 func (r response[T]) GetStatus() Status { return r.status }
@@ -68,6 +71,22 @@ func (r response[T]) EncodeResponse() []byte {
 		buf.Write([]byte(d))
 	}
 	return buf.Bytes()
+}
+
+func (r response[T]) DataPayload() string {
+	if r.status == ServerError {
+		log.Fatal("Server error")
+	}
+	if r.status == NotFound {
+		return "" // impossible value
+	}
+	switch d := any(r.data).(type) {
+	case int:
+		return strconv.Itoa(d)
+	case string:
+		return d
+	}
+	panic("Unreachable")
 }
 
 func ConstructResponse[T types.IntOrString](request Request, status Status, data T) Response {

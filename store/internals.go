@@ -6,7 +6,8 @@ import (
 )
 
 const entrySize int64 = 66       // number of bytes in file encoding
-const maxEntrySpace int64 = 2400 // hash limit
+const maxEntrySpace int64 = 4200 // hash & file size limit
+const seed int64 = 0xFACE        // random seed
 
 type _storeMetadata struct {
 	size       int64
@@ -21,8 +22,11 @@ func entryIndex(i int64) int64 {
 
 func hashKey(key string) (res int64) {
 	for i, r := range key {
-		res += int64((i + 1) * (int(r) - 32))
+		res += seed
+		res += int64((i + 1) * int(r))
 		res <<= 1
+		res ^= seed
+		res <<= 2
 		res %= maxEntrySpace
 	}
 	return

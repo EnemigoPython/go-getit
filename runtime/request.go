@@ -222,6 +222,7 @@ func ConstructRequest(args []string) (Request, error) {
 		if len(args) < 2 {
 			return request[int]{action: ClearAll}, nil
 		}
+		key = args[1]
 		if len(key) > maxStringLen {
 			return request[int]{}, RequestParseError{
 				errorStr: fmt.Sprintf(

@@ -48,7 +48,7 @@ type decodedValue struct {
 
 func decodeFileBytes(b []byte) (decodedValue, error) {
 	if b[0] == 0 {
-		return decodedValue{}, DecodeFileError{errorStr: "Empty entry"}
+		return decodedValue{}, DecodeFileError{errorStr: "Unset entry"}
 	}
 	keyLen := int(b[1])
 	key := string(b[2 : 2+keyLen])

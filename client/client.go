@@ -34,7 +34,7 @@ func MakeRequest(request runtime.Request) {
 	}
 	response := runtime.DecodeResponse(buf[:n])
 	if runtime.Config.Debug {
-		fmt.Println("Response:", response)
+		fmt.Println(response)
 	}
 	fmt.Println(response.DataPayload())
 }

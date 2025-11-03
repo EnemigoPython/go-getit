@@ -59,7 +59,7 @@ func (r response[T]) String() string {
 func (r response[T]) EncodeResponse() []byte {
 	buf := new(bytes.Buffer)
 	buf.WriteByte(byte(r.status))
-	if r.status != Ok {
+	if r.status != Ok || !r.hasData {
 		return buf.Bytes()
 	}
 	switch d := any(r.data).(type) {

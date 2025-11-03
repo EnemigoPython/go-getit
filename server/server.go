@@ -31,8 +31,13 @@ func Run() {
 			}
 			request := runtime.DecodeRequest(requestBytes)
 			fmt.Println(request)
-			store.ProcessRequest(request, file)
-			c.Write([]byte("Hello back!"))
+			response := store.ProcessRequest(request, file)
+			fmt.Println(response)
+			responseBytes := response.EncodeResponse()
+			if runtime.Config.Debug {
+				fmt.Printf("Response bytes: % x\n", responseBytes)
+			}
+			c.Write(responseBytes)
 		}(conn)
 	}
 }

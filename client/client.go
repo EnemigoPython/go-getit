@@ -14,10 +14,10 @@ func MakeRequest(request runtime.Request) {
 	}
 	defer conn.Close()
 
-	bytes := request.EncodeRequest()
+	requestBytes := request.EncodeRequest()
 
 	// Send a message
-	_, err = conn.Write(bytes)
+	_, err = conn.Write(requestBytes)
 	if err != nil {
 		panic(err)
 	}
@@ -31,5 +31,8 @@ func MakeRequest(request runtime.Request) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Response:", string(buf[:n]))
+	response := runtime.DecodeResponse(buf[:n])
+	if runtime.Config.Debug {
+		fmt.Println("Response:", response)
+	}
 }

@@ -54,8 +54,7 @@ func load(request runtime.Request, file *os.File) runtime.Response {
 		fmt.Printf("Hash: %d, Index: %d\n", hash, index)
 	}
 	if storeMetadata.size < index {
-		r := runtime.ConstructResponse(request, runtime.NotFound, 0)
-		return r
+		return runtime.ConstructResponse(request, runtime.NotFound, 0)
 	}
 	file.Seek(index, io.SeekStart)
 	buf := make([]byte, entrySize)
@@ -64,12 +63,19 @@ func load(request runtime.Request, file *os.File) runtime.Response {
 		fmt.Printf("Entry bytes: % x\n", buf)
 	}
 	if err != nil || n < int(entrySize) {
-		r := runtime.ConstructResponse(request, runtime.ServerError, 0)
-		return r
+		return runtime.ConstructResponse(request, runtime.ServerError, 0)
 	}
-	decodeFileBytes(buf)
-	r := runtime.ConstructResponse(request, runtime.Ok, 0)
-	return r
+	decoded, err := decodeFileBytes(buf)
+	if err != nil {
+		return runtime.ConstructResponse(request, runtime.ServerError, 0)
+	}
+	switch decoded.Type {
+	case typeInt:
+		return runtime.ConstructResponse(request, runtime.Ok, decoded.Int)
+	case typeString:
+		return runtime.ConstructResponse(request, runtime.Ok, decoded.Str)
+	}
+	panic("Unreachable")
 }
 
 func clear(request runtime.Request, file *os.File) runtime.Response {
@@ -77,7 +83,7 @@ func clear(request runtime.Request, file *os.File) runtime.Response {
 	return r
 }
 
-func ProcessRequest(request runtime.Request, file *os.File) {
+func ProcessRequest(request runtime.Request, file *os.File) runtime.Response {
 	var response runtime.Response
 	switch request.GetAction() {
 	case runtime.Store:
@@ -87,5 +93,5 @@ func ProcessRequest(request runtime.Request, file *os.File) {
 	case runtime.Clear:
 		response = clear(request, file)
 	}
-	fmt.Println(response)
+	return response
 }

@@ -5,7 +5,8 @@ import (
 	"fmt"
 )
 
-const entrySize int64 = 66 // number of bytes in file encoding
+const entrySize int64 = 66       // number of bytes in file encoding
+const maxEntrySpace int64 = 2400 // hash limit
 
 type _storeMetadata struct {
 	size       int64
@@ -21,6 +22,8 @@ func entryIndex(i int64) int64 {
 func hashKey(key string) (res int64) {
 	for i, r := range key {
 		res += int64((i + 1) * (int(r) - 32))
+		res <<= 1
+		res %= maxEntrySpace
 	}
 	return
 }

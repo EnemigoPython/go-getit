@@ -40,7 +40,6 @@ func store(request runtime.Request, file *os.File) runtime.Response {
 	} else {
 		file.Seek(index, io.SeekStart)
 	}
-	fmt.Println(len(request.EncodeFileBytes()))
 	file.Write(request.EncodeFileBytes())
 	storeMetadata.size += entrySize
 	storeMetadata.entrySpace++
@@ -80,6 +79,21 @@ func load(request runtime.Request, file *os.File) runtime.Response {
 }
 
 func clear(request runtime.Request, file *os.File) runtime.Response {
+	hash := hashKey(request.GetKey())
+	index := entryIndex(hash)
+	if runtime.Config.Debug {
+		fmt.Printf("Hash: %d, Index: %d\n", hash, index)
+	}
+	if storeMetadata.size < index {
+		return runtime.ConstructResponse(request, runtime.Ok, 0)
+	}
+	file.Seek(index, io.SeekStart)
+	file.Write([]byte{0}) // unset header byte
+	r := runtime.ConstructResponse(request, runtime.Ok, 0)
+	return r
+}
+
+func clearAll(request runtime.Request, file *os.File) runtime.Response {
 	file.Truncate(0)
 	storeMetadata.size = 0
 	storeMetadata.entrySpace = 0
@@ -88,14 +102,15 @@ func clear(request runtime.Request, file *os.File) runtime.Response {
 }
 
 func ProcessRequest(request runtime.Request, file *os.File) runtime.Response {
-	var response runtime.Response
 	switch request.GetAction() {
 	case runtime.Store:
-		response = store(request, file)
+		return store(request, file)
 	case runtime.Load:
-		response = load(request, file)
+		return load(request, file)
 	case runtime.Clear:
-		response = clear(request, file)
+		return clear(request, file)
+	case runtime.ClearAll:
+		return clearAll(request, file)
 	}
-	return response
+	panic("Unreachable")
 }

@@ -25,14 +25,15 @@ const (
 	Store Action = iota
 	Load
 	Clear
+	ClearAll
 )
 
 func (a Action) String() string {
-	return [...]string{"Store", "Load", "Clear"}[a]
+	return [...]string{"Store", "Load", "Clear", "ClearAll"}[a]
 }
 
 func (a Action) ToLower() string {
-	return [...]string{"store", "load", "clear"}[a]
+	return [...]string{"store", "load", "clear", "clearall"}[a]
 }
 
 func parseAction(s string) (Action, error) {
@@ -118,9 +119,9 @@ func (r request[T]) EncodeRequest() []byte {
 	case Store:
 		r.writeKeyBytes(buf, false)
 		r.writeDataBytes(buf, false)
-	case Load:
+	case Load, Clear:
 		r.writeKeyBytes(buf, false)
-	case Clear:
+	case ClearAll:
 		// no extra data fields needed
 	}
 	return buf.Bytes()
@@ -146,9 +147,9 @@ func (r request[T]) String() string {
 		default:
 			panic("Unreachable")
 		}
-	case Load:
+	case Load, Clear:
 		body = fmt.Sprintf("%s[%s]", r.action, r.key)
-	case Clear:
+	case ClearAll:
 		body = r.action.String()
 	default:
 		panic("Unreachable")
@@ -218,7 +219,18 @@ func ConstructRequest(args []string) (Request, error) {
 		}
 		return request[int]{key: key, action: action}, nil
 	case Clear:
-		return request[int]{action: action}, nil
+		if len(args) < 2 {
+			return request[int]{action: ClearAll}, nil
+		}
+		if len(key) > maxStringLen {
+			return request[int]{}, RequestParseError{
+				errorStr: fmt.Sprintf(
+					"Key must be less than %d characters",
+					maxStringLen,
+				),
+			}
+		}
+		return request[int]{key: key, action: action}, nil
 	}
 	panic("Unreachable")
 }
@@ -255,14 +267,14 @@ func DecodeRequest(b []byte) Request {
 			data:   data,
 			id:     generateId(),
 		}
-	case Load:
+	case Load, Clear:
 		key := decodeKey(b)
 		return request[int]{
 			action: action,
 			key:    key,
 			id:     generateId(),
 		}
-	case Clear:
+	case ClearAll:
 		return request[int]{
 			action: action,
 			id:     generateId(),

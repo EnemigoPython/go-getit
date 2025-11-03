@@ -79,7 +79,10 @@ func load(request runtime.Request, file *os.File) runtime.Response {
 }
 
 func clear(request runtime.Request, file *os.File) runtime.Response {
-	r := runtime.ConstructResponse(request, runtime.Ok, "A")
+	file.Truncate(0)
+	storeMetadata.size = 0
+	storeMetadata.entrySpace = 0
+	r := runtime.ConstructResponse(request, runtime.Ok, 0)
 	return r
 }
 

@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"net"
 
 	"github.com/EnemigoPython/go-getit/runtime"
@@ -15,7 +16,7 @@ func Run() {
 
 	file, err := store.OpenStore()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	defer file.Close()
 

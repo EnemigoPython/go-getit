@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"log"
 	"net"
 
 	"github.com/EnemigoPython/go-getit/runtime"
@@ -10,7 +11,7 @@ import (
 func MakeRequest(request runtime.Request) {
 	conn, err := net.Dial("tcp", runtime.SocketAddress())
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	defer conn.Close()
 
@@ -19,7 +20,7 @@ func MakeRequest(request runtime.Request) {
 	// Send a message
 	_, err = conn.Write(requestBytes)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	if runtime.Config.Debug {
 		fmt.Println(request)
@@ -29,7 +30,7 @@ func MakeRequest(request runtime.Request) {
 	buf := make([]byte, 1024)
 	n, err := conn.Read(buf)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	response := runtime.DecodeResponse(buf[:n])
 	if runtime.Config.Debug {

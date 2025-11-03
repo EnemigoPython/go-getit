@@ -85,7 +85,7 @@ func (r request[T]) writeKeyBytes(buf *bytes.Buffer, pad bool) {
 	buf.WriteByte(byte(keyLen)) // number of bytes
 	buf.Write([]byte(r.key))
 	if pad {
-		paddedBytes := make([]byte, 32-keyLen)
+		paddedBytes := make([]byte, maxStringLen-keyLen)
 		buf.Write(paddedBytes)
 	}
 }

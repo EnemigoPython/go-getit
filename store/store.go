@@ -40,6 +40,7 @@ func store(request runtime.Request, file *os.File) runtime.Response {
 	} else {
 		file.Seek(index, io.SeekStart)
 	}
+	fmt.Println(len(request.EncodeFileBytes()))
 	file.Write(request.EncodeFileBytes())
 	storeMetadata.size += entrySize
 	storeMetadata.entrySpace++

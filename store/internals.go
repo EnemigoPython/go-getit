@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const entrySize int64 = 68 // number of bytes in file encoding
+const entrySize int64 = 66 // number of bytes in file encoding
 
 type _storeMetadata struct {
 	size       int64
@@ -55,13 +55,13 @@ func decodeFileBytes(b []byte) (decodedValue, error) {
 	if key == "" {
 		// TODO: colision detection
 	}
-	dataType := int(b[34])
+	dataType := int(b[33])
 	if dataType == 1 {
-		valLen := int(b[35])
-		val := string(b[36 : 36+valLen])
+		valLen := int(b[34])
+		val := string(b[35 : 35+valLen])
 		return decodedValue{Type: typeString, Str: val}, nil
 	} else {
-		val := int32(binary.BigEndian.Uint32(b[35:39]))
+		val := int32(binary.BigEndian.Uint32(b[34:38]))
 		return decodedValue{Type: typeInt, Int: int(val)}, nil
 	}
 }

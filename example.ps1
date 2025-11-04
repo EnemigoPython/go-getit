@@ -13,5 +13,5 @@ function GoGetItStream {
     return $results
 }
 
-$data = Get-GoData
+$data = GoGetItSingleLine
 Write-Host "Result: $data"

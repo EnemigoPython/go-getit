@@ -27,22 +27,22 @@ var mutex sync.RWMutex
 
 func getReadPointer() (*os.File, error) {
 	filename := runtime.FileName()
-	file, err := os.Open(filename)
+	fp, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 	mutex.RLock()
-	return file, nil
+	return fp, nil
 }
 
 func getReadWritePointer() (*os.File, error) {
 	filename := runtime.FileName()
-	file, err := os.OpenFile(filename, os.O_RDWR, 0644)
+	fp, err := os.OpenFile(filename, os.O_RDWR, 0644)
 	if err != nil {
 		return nil, err
 	}
 	mutex.Lock()
-	return file, nil
+	return fp, nil
 }
 
 func freeLock()  { mutex.Unlock() }

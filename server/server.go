@@ -10,6 +10,9 @@ import (
 )
 
 func Run() {
+	if runtime.Config.Debug {
+		fmt.Println("Running in debug mode")
+	}
 	ln, _ := net.Listen("tcp", runtime.SocketAddress())
 	fmt.Println("Listening on port", runtime.Config.Port)
 	defer ln.Close()

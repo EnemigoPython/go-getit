@@ -98,7 +98,6 @@ func clear(request runtime.Request, file *os.File) runtime.Response {
 	file.Write([]byte{0}) // unset header byte
 	if decoded.IsSet {
 		// if the entry was previously set decrement the entries counter
-		storeMetadata.entries -= 1
 		updateEntryBytes(file, -1)
 	}
 	return runtime.ConstructResponse(request, runtime.Ok, 0)
@@ -108,7 +107,12 @@ func clearAll(request runtime.Request, file *os.File) runtime.Response {
 	file.Truncate(entrySize)
 	storeMetadata.size = entrySize
 	storeMetadata.entrySpace = 0
+	updateEntryBytes(file, -storeMetadata.entries)
 	return runtime.ConstructResponse(request, runtime.Ok, 0)
+}
+
+func count(request runtime.Request) runtime.Response {
+	return runtime.ConstructResponse(request, runtime.Ok, int(storeMetadata.entries))
 }
 
 func ProcessRequest(request runtime.Request, file *os.File) runtime.Response {
@@ -121,6 +125,8 @@ func ProcessRequest(request runtime.Request, file *os.File) runtime.Response {
 		return clear(request, file)
 	case runtime.ClearAll:
 		return clearAll(request, file)
+	case runtime.Count:
+		return count(request)
 	}
 	panic("Unreachable")
 }

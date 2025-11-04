@@ -26,14 +26,15 @@ const (
 	Load
 	Clear
 	ClearAll
+	Count
 )
 
 func (a Action) String() string {
-	return [...]string{"Store", "Load", "Clear", "ClearAll"}[a]
+	return [...]string{"Store", "Load", "Clear", "ClearAll", "Count"}[a]
 }
 
 func (a Action) ToLower() string {
-	return [...]string{"store", "load", "clear", "clearall"}[a]
+	return [...]string{"store", "load", "clear", "clearall", "count"}[a]
 }
 
 func parseAction(s string) (Action, error) {
@@ -46,6 +47,8 @@ func parseAction(s string) (Action, error) {
 		return Load, nil
 	case Clear.ToLower():
 		return Clear, nil
+	case Count.ToLower():
+		return Count, nil
 	default:
 		return Action(0), RequestParseError{errorStr: s}
 	}
@@ -121,7 +124,7 @@ func (r request[T]) EncodeRequest() []byte {
 		r.writeDataBytes(buf, false)
 	case Load, Clear:
 		r.writeKeyBytes(buf, false)
-	case ClearAll:
+	case ClearAll, Count:
 		// no extra data fields needed
 	}
 	return buf.Bytes()
@@ -149,7 +152,7 @@ func (r request[T]) String() string {
 		}
 	case Load, Clear:
 		body = fmt.Sprintf("%s[%s]", r.action, r.key)
-	case ClearAll:
+	case ClearAll, Count:
 		body = r.action.String()
 	default:
 		panic("Unreachable")
@@ -232,6 +235,8 @@ func ConstructRequest(args []string) (Request, error) {
 			}
 		}
 		return request[int]{key: key, action: action}, nil
+	case Count:
+		return request[int]{action: action}, nil
 	}
 	panic("Unreachable")
 }
@@ -275,7 +280,7 @@ func DecodeRequest(b []byte) Request {
 			key:    key,
 			id:     generateId(),
 		}
-	case ClearAll:
+	case ClearAll, Count:
 		return request[int]{
 			action: action,
 			id:     generateId(),

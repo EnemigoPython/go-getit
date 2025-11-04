@@ -92,7 +92,7 @@ func (r response[T]) DataPayload() string {
 func ConstructResponse[T types.IntOrString](request Request, status Status, data T) Response {
 	var hasData bool
 	switch request.GetAction() {
-	case Store, Load:
+	case Store, Load, Count:
 		hasData = true
 	}
 	switch v := any(data).(type) {

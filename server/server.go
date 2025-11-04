@@ -14,7 +14,7 @@ func Run() {
 		fmt.Println("Running in debug mode")
 	}
 	ln, _ := net.Listen("tcp", runtime.SocketAddress())
-	fmt.Println("Listening on port", runtime.Config.Port)
+	log.Println("Listening on port", runtime.Config.Port)
 	defer ln.Close()
 
 	err := store.OpenStore()
@@ -33,9 +33,9 @@ func Run() {
 				fmt.Printf("Request bytes: % x\n", requestBytes)
 			}
 			request := runtime.DecodeRequest(requestBytes)
-			fmt.Println(request)
+			log.Println(request)
 			response := store.ProcessRequest(request)
-			fmt.Println(response)
+			log.Println(response)
 			responseBytes := response.EncodeResponse()
 			if runtime.Config.Debug {
 				fmt.Printf("Response bytes: % x\n", responseBytes)

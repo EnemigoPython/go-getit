@@ -3,6 +3,7 @@ package store
 import (
 	"fmt"
 	"io"
+	"log"
 	"os"
 
 	"github.com/EnemigoPython/go-getit/runtime"
@@ -23,7 +24,7 @@ func OpenStore() error {
 		entrySpace: (int64(fileSize) / entrySize) - 1,
 		entries:    entries,
 	}
-	fmt.Printf("Using store '%s'\n", filename)
+	log.Printf("Using store '%s'\n", filename)
 	return nil
 }
 

@@ -17,11 +17,10 @@ func Run() {
 	fmt.Println("Listening on port", runtime.Config.Port)
 	defer ln.Close()
 
-	file, err := store.OpenStore()
+	err := store.OpenStore()
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer file.Close()
 
 	for {
 		conn, _ := ln.Accept()
@@ -35,7 +34,7 @@ func Run() {
 			}
 			request := runtime.DecodeRequest(requestBytes)
 			fmt.Println(request)
-			response := store.ProcessRequest(request, file)
+			response := store.ProcessRequest(request)
 			fmt.Println(response)
 			responseBytes := response.EncodeResponse()
 			if runtime.Config.Debug {

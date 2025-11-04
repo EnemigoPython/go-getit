@@ -22,10 +22,28 @@ type _storeMetadata struct {
 
 var storeMetadata _storeMetadata
 
-func readEntryBytes(file *os.File) int64 {
+func getReadPointer() (*os.File, error) {
+	filename := runtime.FileName()
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	return file, nil
+}
+
+func getReadWritePointer() (*os.File, error) {
+	filename := runtime.FileName()
+	file, err := os.OpenFile(filename, os.O_RDWR, 0644)
+	if err != nil {
+		return nil, err
+	}
+	return file, nil
+}
+
+func readEntryBytes(fp *os.File) int64 {
 	// read first 4 bytes to get number of entries
 	buf := make([]byte, 4)
-	_, err := file.Read(buf)
+	_, err := fp.Read(buf)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -33,10 +51,10 @@ func readEntryBytes(file *os.File) int64 {
 	return int64(entries)
 }
 
-func updateEntryBytes(file *os.File, update int64) {
+func updateEntryBytes(fp *os.File, update int64) {
 	storeMetadata.entries += update
-	file.Seek(0, io.SeekStart)
-	binary.Write(file, binary.BigEndian, int32(storeMetadata.entries))
+	fp.Seek(0, io.SeekStart)
+	binary.Write(fp, binary.BigEndian, int32(storeMetadata.entries))
 }
 
 func entryIndex(i int64) int64 {
@@ -106,10 +124,10 @@ func decodeFileBytes(b []byte) (decodedEntry, error) {
 	}
 }
 
-func readEntry(index int64, file *os.File) (decodedEntry, error) {
-	file.Seek(index, io.SeekStart)
+func readEntry(index int64, fp *os.File) (decodedEntry, error) {
+	fp.Seek(index, io.SeekStart)
 	buf := make([]byte, entrySize)
-	n, err := file.Read(buf)
+	n, err := fp.Read(buf)
 	if runtime.Config.Debug {
 		fmt.Printf("Entry bytes: % x\n", buf)
 	}
@@ -123,6 +141,6 @@ func readEntry(index int64, file *os.File) (decodedEntry, error) {
 	if err != nil {
 		return decodedEntry{}, err
 	}
-	file.Seek(-index, io.SeekCurrent)
+	fp.Seek(-index, io.SeekCurrent)
 	return decoded, nil
 }

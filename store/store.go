@@ -59,6 +59,7 @@ func store(request runtime.Request) runtime.Response {
 	fp.Write(request.EncodeFileBytes())
 	storeMetadata.size += entrySize
 	storeMetadata.entrySpace++
+	freeLock()
 	return runtime.ConstructResponse(request, runtime.Ok, 0)
 }
 
@@ -116,6 +117,7 @@ func clear(request runtime.Request) runtime.Response {
 		// if the entry was previously set decrement the entries counter
 		updateEntryBytes(fp, -1)
 	}
+	freeLock()
 	return runtime.ConstructResponse(request, runtime.Ok, 0)
 }
 
@@ -129,6 +131,7 @@ func clearAll(request runtime.Request) runtime.Response {
 	storeMetadata.size = entrySize
 	storeMetadata.entrySpace = 0
 	updateEntryBytes(fp, -storeMetadata.entries)
+	freeLock()
 	return runtime.ConstructResponse(request, runtime.Ok, 0)
 }
 

@@ -169,7 +169,7 @@ func ConstructRequest(args []string) (Request, error) {
 	var data string
 	switch action {
 	case Store:
-		if len(args) < 2 {
+		if len(args) < 3 {
 			return request[int]{}, RequestParseError{
 				errorStr: "need 3 args for store",
 			}

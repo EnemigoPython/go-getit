@@ -10,7 +10,7 @@ import (
 
 func OpenStore() error {
 	filename := runtime.FileName()
-	file, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0644)
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_RDONLY, 0644)
 	if err != nil {
 		return err
 	}
@@ -27,12 +27,7 @@ func OpenStore() error {
 	return nil
 }
 
-func store(request runtime.Request) runtime.Response {
-	fp, err := getReadWritePointer()
-	if err != nil {
-		return runtime.ConstructResponse(request, runtime.ServerError, 0)
-	}
-	defer fp.Close()
+func store(request runtime.Request, fp *os.File) runtime.Response {
 	hash := hashKey(request.GetKey())
 	index := entryIndex(hash)
 	if runtime.Config.Debug {
@@ -59,16 +54,10 @@ func store(request runtime.Request) runtime.Response {
 	fp.Write(request.EncodeFileBytes())
 	storeMetadata.size += entrySize
 	storeMetadata.entrySpace++
-	freeLock()
 	return runtime.ConstructResponse(request, runtime.Ok, 0)
 }
 
-func load(request runtime.Request) runtime.Response {
-	fp, err := getReadPointer()
-	if err != nil {
-		return runtime.ConstructResponse(request, runtime.ServerError, 0)
-	}
-	defer fp.Close()
+func load(request runtime.Request, fp *os.File) runtime.Response {
 	hash := hashKey(request.GetKey())
 	index := entryIndex(hash)
 	if runtime.Config.Debug {
@@ -93,12 +82,7 @@ func load(request runtime.Request) runtime.Response {
 	panic("Unreachable")
 }
 
-func clear(request runtime.Request) runtime.Response {
-	fp, err := getReadWritePointer()
-	if err != nil {
-		return runtime.ConstructResponse(request, runtime.ServerError, 0)
-	}
-	defer fp.Close()
+func clear(request runtime.Request, fp *os.File) runtime.Response {
 	hash := hashKey(request.GetKey())
 	index := entryIndex(hash)
 	if runtime.Config.Debug {
@@ -117,21 +101,14 @@ func clear(request runtime.Request) runtime.Response {
 		// if the entry was previously set decrement the entries counter
 		updateEntryBytes(fp, -1)
 	}
-	freeLock()
 	return runtime.ConstructResponse(request, runtime.Ok, 0)
 }
 
-func clearAll(request runtime.Request) runtime.Response {
-	fp, err := getReadWritePointer()
-	if err != nil {
-		return runtime.ConstructResponse(request, runtime.ServerError, 0)
-	}
-	defer fp.Close()
+func clearAll(request runtime.Request, fp *os.File) runtime.Response {
 	fp.Truncate(entrySize)
 	storeMetadata.size = entrySize
 	storeMetadata.entrySpace = 0
 	updateEntryBytes(fp, -storeMetadata.entries)
-	freeLock()
 	return runtime.ConstructResponse(request, runtime.Ok, 0)
 }
 
@@ -143,16 +120,42 @@ func count(request runtime.Request) runtime.Response {
 	)
 }
 
+func readOperation(
+	f func(runtime.Request, *os.File) runtime.Response,
+	request runtime.Request,
+) runtime.Response {
+	fp, err := getReadPointer()
+	if err != nil {
+		return runtime.ConstructResponse(request, runtime.ServerError, 0)
+	}
+	defer fp.Close()
+	defer freeRLock()
+	return f(request, fp)
+}
+
+func writeOperation(
+	f func(runtime.Request, *os.File) runtime.Response,
+	request runtime.Request,
+) runtime.Response {
+	fp, err := getReadWritePointer()
+	if err != nil {
+		return runtime.ConstructResponse(request, runtime.ServerError, 0)
+	}
+	defer fp.Close()
+	defer freeLock()
+	return f(request, fp)
+}
+
 func ProcessRequest(request runtime.Request) runtime.Response {
 	switch request.GetAction() {
 	case runtime.Store:
-		return store(request)
+		return writeOperation(store, request)
 	case runtime.Load:
-		return load(request)
+		return readOperation(load, request)
 	case runtime.Clear:
-		return clear(request)
+		return writeOperation(clear, request)
 	case runtime.ClearAll:
-		return clearAll(request)
+		return writeOperation(clearAll, request)
 	case runtime.Count:
 		return count(request)
 	}

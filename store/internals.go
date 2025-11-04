@@ -23,7 +23,7 @@ type _storeMetadata struct {
 
 var storeMetadata _storeMetadata
 
-var writeLock sync.Mutex
+var mutex sync.RWMutex
 
 func getReadPointer() (*os.File, error) {
 	filename := runtime.FileName()
@@ -31,8 +31,7 @@ func getReadPointer() (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	writeLock.Lock() // block if write in progress
-	freeLock()
+	mutex.RLock()
 	return file, nil
 }
 
@@ -42,11 +41,12 @@ func getReadWritePointer() (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	writeLock.Lock()
+	mutex.Lock()
 	return file, nil
 }
 
-func freeLock() { writeLock.Unlock() }
+func freeLock()  { mutex.Unlock() }
+func freeRLock() { mutex.RUnlock() }
 
 func readEntryBytes(fp *os.File) int64 {
 	// read first 4 bytes to get number of entries

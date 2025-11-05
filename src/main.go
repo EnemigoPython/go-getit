@@ -6,9 +6,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/EnemigoPython/go-getit/client"
-	"github.com/EnemigoPython/go-getit/runtime"
-	"github.com/EnemigoPython/go-getit/server"
+	"github.com/EnemigoPython/go-getit/src/client"
+	"github.com/EnemigoPython/go-getit/src/runtime"
+	"github.com/EnemigoPython/go-getit/src/server"
 )
 
 func main() {

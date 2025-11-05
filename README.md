@@ -2,7 +2,7 @@
 This is a key-value database I built from scratch (for the purpose of sharpening up my Golang & to play around with binary protocols)
 
 ## Build
-The build script contains an example of building the binary from source (in my example I have 2 copies of the executable but this was to run a copy at startup without a console window appearing; runs perfectly fine from a single binary)
+The build script contains an example of building the binary from source (in my example I have 2 copies of the executable but this was to run a copy at startup without a console window appearing; it runs perfectly fine from a single binary)
 
 ## Use
 ### Server

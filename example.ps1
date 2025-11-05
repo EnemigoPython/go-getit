@@ -1,20 +1,15 @@
-# go build -ldflags "-H=windowsgui" -o getit.exe main.go
-# go build -o dist/getit.exe ./src
-
-function GoGetItSingleLine {
-    $output = ./go-getit.exe count a
+function GoGetItExample {
+    # use in script
+    $output = ./dist/getit.exe count a
     return $output
 }
 
-function GoGetItStream {
-    $results = @()
-
-    & "./go-getit.exe" "load" "a" | ForEach-Object {
-        $results += $_
-    }
-
-    return $results
+function GoGetItExample2 {
+    # or if you add to PATH
+    $output = getit count a
+    return $output
 }
 
-$data = GoGetItSingleLine
+
+$data = GoGetItExample
 Write-Host "Result: $data"

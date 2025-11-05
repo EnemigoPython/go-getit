@@ -9,13 +9,13 @@ import (
 )
 
 func OpenStore() error {
-	filename := runtime.FileName()
-	file, err := os.OpenFile(filename, os.O_CREATE|os.O_RDONLY, 0644)
+	filePath := runtime.Config.StorePath
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDONLY, 0644)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
-	info, _ := os.Stat(filename)
+	info, _ := os.Stat(filePath)
 	fileSize := info.Size()
 	entries := readMetaBytes(file)
 	storeMetadata = _storeMetadata{
@@ -23,7 +23,7 @@ func OpenStore() error {
 		entrySpace: (int64(fileSize) / entrySize) - 1,
 		entries:    entries,
 	}
-	log.Printf("Using store '%s'\n", filename)
+	log.Printf("Using store '%s'\n", filePath)
 	return nil
 }
 

@@ -27,8 +27,8 @@ var storeMetadata _storeMetadata
 var mutex sync.RWMutex
 
 func getReadPointer() (*os.File, error) {
-	filename := runtime.FileName()
-	fp, err := os.Open(filename)
+	filePath := runtime.Config.StorePath
+	fp, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -37,8 +37,8 @@ func getReadPointer() (*os.File, error) {
 }
 
 func getReadWritePointer() (*os.File, error) {
-	filename := runtime.FileName()
-	fp, err := os.OpenFile(filename, os.O_RDWR, 0644)
+	filePath := runtime.Config.StorePath
+	fp, err := os.OpenFile(filePath, os.O_RDWR, 0644)
 	if err != nil {
 		return nil, err
 	}

@@ -2,9 +2,7 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
-	"os"
 
 	"github.com/EnemigoPython/go-getit/src/client"
 	"github.com/EnemigoPython/go-getit/src/runtime"
@@ -24,8 +22,7 @@ func main() {
 		*debugFlag,
 	)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 	switch config.RunTime {
 	case runtime.Server:

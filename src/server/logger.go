@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -12,14 +11,8 @@ import (
 var logFile *os.File
 
 func configureLogger() {
-	var logName string
-	if runtime.Config.Debug {
-		logName = fmt.Sprintf("%s.debug.log", runtime.Config.StoreName)
-	} else {
-		logName = fmt.Sprintf("%s.log", runtime.Config.StoreName)
-	}
 	logFile, err := os.OpenFile(
-		logName,
+		runtime.Config.LogPath,
 		os.O_CREATE|os.O_WRONLY|os.O_APPEND,
 		0666,
 	)

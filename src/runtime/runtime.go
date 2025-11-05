@@ -2,6 +2,9 @@ package runtime
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -46,6 +49,8 @@ type _Config struct {
 	Port      int
 	StoreName string
 	Debug     bool
+	StorePath string
+	LogPath   string
 }
 
 var Config _Config
@@ -54,8 +59,30 @@ func SocketAddress() string {
 	return fmt.Sprintf("127.0.0.1:%d", Config.Port)
 }
 
-func FileName() string {
-	return fmt.Sprintf("%s.bin", Config.StoreName)
+func getStorePath() string {
+	exePath, err := os.Executable()
+	if err != nil {
+		log.Fatal(err)
+	}
+	exeDir := filepath.Dir(exePath)
+	storePath := filepath.Join(exeDir, fmt.Sprintf("%s.bin", Config.StoreName))
+	return storePath
+}
+
+func getLogPath(debug bool) string {
+	exePath, err := os.Executable()
+	if err != nil {
+		log.Fatal(err)
+	}
+	exeDir := filepath.Dir(exePath)
+	var logName string
+	if debug {
+		logName = fmt.Sprintf("%s.debug.log", Config.StoreName)
+	} else {
+		logName = fmt.Sprintf("%s.log", Config.StoreName)
+	}
+	logPath := filepath.Join(exeDir, logName)
+	return logPath
 }
 
 func ParseConfig(
@@ -73,6 +100,8 @@ func ParseConfig(
 		Port:      port,
 		StoreName: storeName,
 		Debug:     debug,
+		StorePath: getStorePath(),
+		LogPath:   getLogPath(debug),
 	}
 	return Config, nil
 }

@@ -54,7 +54,9 @@ func readMetaBytes(fp *os.File) int64 {
 	buf := make([]byte, 4)
 	_, err := fp.Read(buf)
 	if err != nil {
-		log.Fatal(err)
+		// new store; write empty metadata
+		newMetaBytes := make([]byte, entrySize)
+		fp.Write(newMetaBytes)
 	}
 	entries := int32(binary.BigEndian.Uint32(buf))
 	return int64(entries)

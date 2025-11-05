@@ -18,7 +18,7 @@ func OpenStore() error {
 	defer file.Close()
 	info, _ := os.Stat(filename)
 	fileSize := info.Size()
-	entries := readEntryBytes(file)
+	entries := readMetaBytes(file)
 	storeMetadata = _storeMetadata{
 		size:       int64(fileSize),
 		entrySpace: (int64(fileSize) / entrySize) - 1,
@@ -43,13 +43,14 @@ func store(request runtime.Request, fp *os.File) runtime.Response {
 		storeMetadata.entrySpace += paddingLen / entrySize
 		updateEntryBytes(fp, 1)
 	} else {
-		decoded, err := readEntry(index, fp)
+		decoded, err := resolveEntry(index, fp, request.GetKey())
 		if err != nil {
 			return runtime.ConstructResponse(request, runtime.ServerError, 0)
 		}
 		if !decoded.IsSet {
 			updateEntryBytes(fp, 1)
 		}
+		index = decoded.Index
 	}
 	fp.Seek(index, io.SeekStart)
 	fp.Write(request.EncodeFileBytes())
@@ -67,7 +68,7 @@ func load(request runtime.Request, fp *os.File) runtime.Response {
 	if storeMetadata.size < index {
 		return runtime.ConstructResponse(request, runtime.NotFound, 0)
 	}
-	decoded, err := readEntry(index, fp)
+	decoded, err := resolveEntry(index, fp, request.GetKey())
 	if err != nil {
 		return runtime.ConstructResponse(request, runtime.ServerError, 0)
 	}
@@ -92,10 +93,11 @@ func clear(request runtime.Request, fp *os.File) runtime.Response {
 	if storeMetadata.size < index {
 		return runtime.ConstructResponse(request, runtime.Ok, 0)
 	}
-	decoded, err := readEntry(index, fp)
+	decoded, err := resolveEntry(index, fp, request.GetKey())
 	if err != nil {
 		return runtime.ConstructResponse(request, runtime.ServerError, 0)
 	}
+	index = decoded.Index
 	fp.Seek(index, io.SeekStart)
 	fp.Write([]byte{0}) // unset header byte
 	if decoded.IsSet {

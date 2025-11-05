@@ -14,6 +14,7 @@ import (
 const entrySize int64 = 66       // number of bytes in file entry encoding
 const maxEntrySpace int64 = 4200 // hash & file size limit
 const seed int64 = 0xFACE        // random seed
+const maxCollisions = 3          // maximum permitted collisions
 
 type _storeMetadata struct {
 	size       int64
@@ -48,7 +49,7 @@ func getReadWritePointer() (*os.File, error) {
 func freeLock()  { mutex.Unlock() }
 func freeRLock() { mutex.RUnlock() }
 
-func readEntryBytes(fp *os.File) int64 {
+func readMetaBytes(fp *os.File) int64 {
 	// read first 4 bytes to get number of entries
 	buf := make([]byte, 4)
 	_, err := fp.Read(buf)
@@ -103,6 +104,7 @@ type decodedEntry struct {
 	ValueType valueType
 	Int       int
 	Str       string
+	Index     int64
 }
 
 func decodeFileBytes(b []byte) (decodedEntry, error) {
@@ -149,6 +151,21 @@ func readEntry(index int64, fp *os.File) (decodedEntry, error) {
 	if err != nil {
 		return decodedEntry{}, err
 	}
+	decoded.Index = index
 	fp.Seek(-index, io.SeekCurrent)
 	return decoded, nil
+}
+
+func resolveEntry(index int64, fp *os.File, key string) (decodedEntry, error) {
+	for range maxCollisions {
+		decoded, err := readEntry(index, fp)
+		if err != nil {
+			return decodedEntry{}, DecodeFileError{errorStr: "EOF"}
+		}
+		if !decoded.IsSet || decoded.Key == key {
+			return decoded, nil
+		}
+		index += entrySize
+	}
+	return decodedEntry{}, DecodeFileError{errorStr: "Maximum search depth"}
 }

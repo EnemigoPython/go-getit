@@ -8,8 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/EnemigoPython/go-getit/runtime"
-	"github.com/EnemigoPython/go-getit/store"
+	"github.com/EnemigoPython/go-getit/src/runtime"
+	"github.com/EnemigoPython/go-getit/src/store"
 )
 
 func Run() {
@@ -18,7 +18,10 @@ func Run() {
 	}
 	configureLogger()
 	defer shutdown()
-	ln, _ := net.Listen("tcp", runtime.SocketAddress())
+	ln, err := net.Listen("tcp", runtime.SocketAddress())
+	if err != nil {
+		log.Fatal(err)
+	}
 	log.Println("Listening on port", runtime.Config.Port)
 	defer ln.Close()
 
@@ -30,7 +33,7 @@ func Run() {
 		ln.Close()
 	}()
 
-	err := store.OpenStore()
+	err = store.OpenStore()
 	if err != nil {
 		log.Fatal(err)
 	}

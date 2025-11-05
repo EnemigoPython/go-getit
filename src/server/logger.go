@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/EnemigoPython/go-getit/runtime"
+	"github.com/EnemigoPython/go-getit/src/runtime"
 )
 
 var logFile *os.File

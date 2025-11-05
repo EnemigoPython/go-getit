@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/EnemigoPython/go-getit/types"
+	"github.com/EnemigoPython/go-getit/src/types"
 )
 
 type RequestParseError struct {

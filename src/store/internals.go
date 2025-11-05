@@ -8,7 +8,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/EnemigoPython/go-getit/runtime"
+	"github.com/EnemigoPython/go-getit/src/runtime"
 )
 
 const entrySize int64 = 66       // number of bytes in file entry encoding

@@ -5,7 +5,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/EnemigoPython/go-getit/runtime"
+	"github.com/EnemigoPython/go-getit/src/runtime"
 )
 
 func MakeRequest(request runtime.Request) {

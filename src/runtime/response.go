@@ -7,7 +7,7 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/EnemigoPython/go-getit/types"
+	"github.com/EnemigoPython/go-getit/src/types"
 )
 
 type Status byte

@@ -12,7 +12,7 @@ import (
 )
 
 const entrySize int64 = 66       // number of bytes in file entry encoding
-const maxEntrySpace int64 = 4200 // hash & file size limit
+const maxEntrySpace int64 = 5000 // hash & file size limit
 const seed int64 = 0xFACE        // random seed
 const maxCollisions = 3          // maximum permitted collisions
 
@@ -160,12 +160,22 @@ func resolveEntry(index int64, fp *os.File, key string) (decodedEntry, error) {
 	for range maxCollisions {
 		decoded, err := readEntry(index, fp)
 		if err != nil {
+			log.Printf("Error; hit end of file at index %d\n", index)
 			return decodedEntry{}, DecodeFileError{errorStr: "EOF"}
 		}
 		if !decoded.IsSet || decoded.Key == key {
 			return decoded, nil
 		}
+		if runtime.Config.Debug {
+			fmt.Printf(
+				"Collision between keys %s and %s at index %d\n",
+				key,
+				decoded.Key,
+				index,
+			)
+		}
 		index += entrySize
 	}
+	log.Printf("Error; maximum search depth exceeded at %d for %s\n", index, key)
 	return decodedEntry{}, DecodeFileError{errorStr: "Maximum search depth"}
 }

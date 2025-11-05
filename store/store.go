@@ -36,7 +36,8 @@ func store(request runtime.Request, fp *os.File) runtime.Response {
 	}
 	if storeMetadata.size < index {
 		fp.Seek(0, io.SeekEnd)
-		paddingLen := index - storeMetadata.size
+		extraPadding := entrySize * 3 // for collision cases
+		paddingLen := (index - storeMetadata.size) + extraPadding
 		paddedBytes := make([]byte, paddingLen)
 		fp.Write(paddedBytes)
 		storeMetadata.size += paddingLen

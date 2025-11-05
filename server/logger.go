@@ -27,8 +27,12 @@ func configureLogger() {
 		log.Fatalf("failed to open log file: %v", err)
 	}
 
-	multi := io.MultiWriter(os.Stdout, logFile)
-	log.SetOutput(multi)
+	if runtime.Config.Debug {
+		multi := io.MultiWriter(os.Stdout, logFile)
+		log.SetOutput(multi)
+	} else {
+		log.SetOutput(logFile)
+	}
 	log.Println("Logger initialised")
 }
 

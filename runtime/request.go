@@ -164,6 +164,11 @@ func (r request[T]) String() string {
 }
 
 func ConstructRequest(args []string) (Request, error) {
+	if len(args) == 0 {
+		return request[int]{}, RequestParseError{
+			errorStr: "enter a command",
+		}
+	}
 	action, err := parseAction(args[0])
 	if err != nil {
 		return request[int]{}, err

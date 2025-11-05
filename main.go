@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/EnemigoPython/go-getit/client"
@@ -32,8 +33,7 @@ func main() {
 	case runtime.Client:
 		request, err := runtime.ConstructRequest(flag.Args())
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			log.Fatal(err)
 		}
 		client.MakeRequest(request)
 	}

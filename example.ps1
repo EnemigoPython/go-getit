@@ -1,3 +1,5 @@
+# go build -ldflags "-H=windowsgui" -o getit.exe main.go
+
 function GoGetItSingleLine {
     $output = ./go-getit.exe count a
     return $output

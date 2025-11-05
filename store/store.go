@@ -1,7 +1,6 @@
 package store
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -32,7 +31,7 @@ func store(request runtime.Request, fp *os.File) runtime.Response {
 	hash := hashKey(request.GetKey())
 	index := entryIndex(hash)
 	if runtime.Config.Debug {
-		fmt.Printf("Hash: %d, Index: %d\n", hash, index)
+		log.Printf("Hash: %d, Index: %d\n", hash, index)
 	}
 	if storeMetadata.size < index {
 		fp.Seek(0, io.SeekEnd)
@@ -64,7 +63,7 @@ func load(request runtime.Request, fp *os.File) runtime.Response {
 	hash := hashKey(request.GetKey())
 	index := entryIndex(hash)
 	if runtime.Config.Debug {
-		fmt.Printf("Hash: %d, Index: %d\n", hash, index)
+		log.Printf("Hash: %d, Index: %d\n", hash, index)
 	}
 	if storeMetadata.size < index {
 		return runtime.ConstructResponse(request, runtime.NotFound, 0)
@@ -89,7 +88,7 @@ func clear(request runtime.Request, fp *os.File) runtime.Response {
 	hash := hashKey(request.GetKey())
 	index := entryIndex(hash)
 	if runtime.Config.Debug {
-		fmt.Printf("Hash: %d, Index: %d\n", hash, index)
+		log.Printf("Hash: %d, Index: %d\n", hash, index)
 	}
 	if storeMetadata.size < index {
 		return runtime.ConstructResponse(request, runtime.Ok, 0)
@@ -122,6 +121,10 @@ func count(request runtime.Request) runtime.Response {
 		runtime.Ok,
 		int(storeMetadata.entries),
 	)
+}
+
+func exit(request runtime.Request) runtime.Response {
+	return runtime.ConstructResponse(request, runtime.Ok, 0)
 }
 
 func readOperation(
@@ -162,6 +165,8 @@ func ProcessRequest(request runtime.Request) runtime.Response {
 		return writeOperation(clearAll, request)
 	case runtime.Count:
 		return count(request)
+	case runtime.Exit:
+		return exit(request)
 	}
 	panic("Unreachable")
 }

@@ -27,14 +27,15 @@ const (
 	Clear
 	ClearAll
 	Count
+	Exit
 )
 
 func (a Action) String() string {
-	return [...]string{"Store", "Load", "Clear", "ClearAll", "Count"}[a]
+	return [...]string{"Store", "Load", "Clear", "ClearAll", "Count", "Exit"}[a]
 }
 
 func (a Action) ToLower() string {
-	return [...]string{"store", "load", "clear", "clearall", "count"}[a]
+	return [...]string{"store", "load", "clear", "clearall", "count", "exit"}[a]
 }
 
 func parseAction(s string) (Action, error) {
@@ -49,6 +50,8 @@ func parseAction(s string) (Action, error) {
 		return Clear, nil
 	case Count.ToLower():
 		return Count, nil
+	case Exit.ToLower():
+		return Exit, nil
 	default:
 		return Action(0), RequestParseError{errorStr: s}
 	}
@@ -152,7 +155,7 @@ func (r request[T]) String() string {
 		}
 	case Load, Clear:
 		body = fmt.Sprintf("%s[%s]", r.action, r.key)
-	case ClearAll, Count:
+	case ClearAll, Count, Exit:
 		body = r.action.String()
 	default:
 		panic("Unreachable")
@@ -235,7 +238,7 @@ func ConstructRequest(args []string) (Request, error) {
 			}
 		}
 		return request[int]{key: key, action: action}, nil
-	case Count:
+	case Count, Exit:
 		return request[int]{action: action}, nil
 	}
 	panic("Unreachable")
@@ -280,7 +283,7 @@ func DecodeRequest(b []byte) Request {
 			key:    key,
 			id:     generateId(),
 		}
-	case ClearAll, Count:
+	case ClearAll, Count, Exit:
 		return request[int]{
 			action: action,
 			id:     generateId(),

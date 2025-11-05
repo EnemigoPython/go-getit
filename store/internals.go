@@ -139,7 +139,7 @@ func readEntry(index int64, fp *os.File) (decodedEntry, error) {
 	buf := make([]byte, entrySize)
 	n, err := fp.Read(buf)
 	if runtime.Config.Debug {
-		fmt.Printf("Entry bytes: % x\n", buf)
+		log.Printf("Entry bytes: % x\n", buf)
 	}
 	if err != nil {
 		return decodedEntry{}, err
@@ -167,7 +167,7 @@ func resolveEntry(index int64, fp *os.File, key string) (decodedEntry, error) {
 			return decoded, nil
 		}
 		if runtime.Config.Debug {
-			fmt.Printf(
+			log.Printf(
 				"Collision between keys %s and %s at index %d\n",
 				key,
 				decoded.Key,

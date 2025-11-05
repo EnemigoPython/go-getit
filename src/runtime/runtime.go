@@ -59,17 +59,17 @@ func SocketAddress() string {
 	return fmt.Sprintf("127.0.0.1:%d", Config.Port)
 }
 
-func getStorePath() string {
+func getStorePath(storeName string) string {
 	exePath, err := os.Executable()
 	if err != nil {
 		log.Fatal(err)
 	}
 	exeDir := filepath.Dir(exePath)
-	storePath := filepath.Join(exeDir, fmt.Sprintf("%s.bin", Config.StoreName))
+	storePath := filepath.Join(exeDir, fmt.Sprintf("%s.bin", storeName))
 	return storePath
 }
 
-func getLogPath(debug bool) string {
+func getLogPath(storeName string, debug bool) string {
 	exePath, err := os.Executable()
 	if err != nil {
 		log.Fatal(err)
@@ -77,9 +77,9 @@ func getLogPath(debug bool) string {
 	exeDir := filepath.Dir(exePath)
 	var logName string
 	if debug {
-		logName = fmt.Sprintf("%s.debug.log", Config.StoreName)
+		logName = fmt.Sprintf("%s.debug.log", storeName)
 	} else {
-		logName = fmt.Sprintf("%s.log", Config.StoreName)
+		logName = fmt.Sprintf("%s.log", storeName)
 	}
 	logPath := filepath.Join(exeDir, logName)
 	return logPath
@@ -100,8 +100,8 @@ func ParseConfig(
 		Port:      port,
 		StoreName: storeName,
 		Debug:     debug,
-		StorePath: getStorePath(),
-		LogPath:   getLogPath(debug),
+		StorePath: getStorePath(storeName),
+		LogPath:   getLogPath(storeName, debug),
 	}
 	return Config, nil
 }

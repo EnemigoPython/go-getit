@@ -17,7 +17,7 @@ const maxCollisions = 3          // maximum permitted collisions
 const streamBufferSize = 100     // size of stream channel
 const workerCount = 10           // number of workers for stream
 
-var keysFilter = []runtime.Status{runtime.NotFound}
+var notFoundFilter = []runtime.Status{runtime.NotFound}
 
 type _storeMetadata struct {
 	size       int64
@@ -139,7 +139,7 @@ func readEntry(index int64, fp *os.File) (decodedEntry, error) {
 	buf := make([]byte, entrySize)
 	n, err := fp.ReadAt(buf, index)
 	if runtime.Config.Debug {
-		log.Printf("Entry bytes: % x\n", buf)
+		// log.Printf("Entry bytes: % x\n", buf)
 	}
 	if err != nil {
 		return decodedEntry{}, err

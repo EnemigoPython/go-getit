@@ -97,12 +97,8 @@ func (r response[T]) DataPayload() string {
 }
 
 func ConstructResponse[T types.IntOrString](request Request, status Status, data T) Response {
+	hasData := request.HasData()
 	isStream := request.IsStream()
-	var hasData bool
-	switch request.GetAction() {
-	case Store, Load, Keys, Count:
-		hasData = true
-	}
 	switch v := any(data).(type) {
 	case int:
 		return response[int]{

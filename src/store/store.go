@@ -126,13 +126,35 @@ func keys(request runtime.Request, fp *os.File, i int) runtime.Response {
 	if storeMetadata.size < index {
 		return runtime.ConstructResponse(request, runtime.StreamDone, 0)
 	}
-	decodedEntry, err := readEntry(index, fp)
+	decoded, err := readEntry(index, fp)
 	if err != nil && err != io.EOF {
-		fmt.Println(err)
 		return runtime.ConstructResponse(request, runtime.ServerError, 0)
 	}
-	if decodedEntry.IsSet {
-		return runtime.ConstructResponse(request, runtime.Ok, decodedEntry.Key)
+	if decoded.IsSet {
+		return runtime.ConstructResponse(request, runtime.Ok, decoded.Key)
+	}
+	return runtime.ConstructResponse(request, runtime.NotFound, 0)
+}
+
+func items(request runtime.Request, fp *os.File, i int) runtime.Response {
+	index := entryIndex(int64(i + 1))
+	if storeMetadata.size < index {
+		return runtime.ConstructResponse(request, runtime.StreamDone, 0)
+	}
+	decoded, err := readEntry(index, fp)
+	if err != nil && err != io.EOF {
+		return runtime.ConstructResponse(request, runtime.ServerError, 0)
+	}
+	if decoded.IsSet {
+		var itemRow string
+		switch decoded.ValueType {
+		case typeInt:
+			itemRow = fmt.Sprintf("%s %d", decoded.Key, decoded.Int)
+		case typeString:
+			itemRow = fmt.Sprintf("%s %s", decoded.Key, decoded.Str)
+		}
+		log.Println(itemRow, decoded.Key)
+		return runtime.ConstructResponse(request, runtime.Ok, itemRow)
 	}
 	return runtime.ConstructResponse(request, runtime.NotFound, 0)
 }
@@ -254,7 +276,9 @@ func ProcessStreamRequest(request runtime.Request) <-chan runtime.Response {
 
 	switch request.GetAction() {
 	case runtime.Keys:
-		go streamReadOperation(keys, request, keysFilter, out)
+		go streamReadOperation(keys, request, notFoundFilter, out)
+	case runtime.Items:
+		go streamReadOperation(items, request, notFoundFilter, out)
 	default:
 		panic("Unreachable")
 	}

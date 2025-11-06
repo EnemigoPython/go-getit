@@ -27,6 +27,7 @@ const (
 	Clear
 	ClearAll
 	Keys
+	Items
 	Count
 	Exit
 )
@@ -38,6 +39,7 @@ func (a Action) String() string {
 		"Clear",
 		"ClearAll",
 		"Keys",
+		"Items",
 		"Count",
 		"Exit",
 	}[a]
@@ -50,6 +52,7 @@ func (a Action) ToLower() string {
 		"clear",
 		"clearall",
 		"keys",
+		"items",
 		"count",
 		"exit",
 	}[a]
@@ -67,6 +70,8 @@ func parseAction(s string) (Action, error) {
 		return Clear, nil
 	case Keys.ToLower():
 		return Keys, nil
+	case Items.ToLower():
+		return Items, nil
 	case Count.ToLower():
 		return Count, nil
 	case Exit.ToLower():
@@ -99,6 +104,7 @@ type Request interface {
 	GetKey() string
 	GetId() uint8
 	IsStream() bool
+	HasData() bool
 	EncodeRequest() []byte
 	EncodeFileBytes() []byte
 }
@@ -109,7 +115,16 @@ func (r request[T]) GetId() uint8      { return r.id }
 
 func (r request[T]) IsStream() bool {
 	switch r.action {
-	case Keys:
+	case Keys, Items:
+		return true
+	default:
+		return false
+	}
+}
+
+func (r request[T]) HasData() bool {
+	switch r.action {
+	case Store, Load, Keys, Items, Count:
 		return true
 	default:
 		return false
@@ -156,7 +171,7 @@ func (r request[T]) EncodeRequest() []byte {
 		r.writeDataBytes(buf, false)
 	case Load, Clear:
 		r.writeKeyBytes(buf, false)
-	case ClearAll, Count:
+	default:
 		// no extra data fields needed
 	}
 	return buf.Bytes()
@@ -184,10 +199,8 @@ func (r request[T]) String() string {
 		}
 	case Load, Clear:
 		body = fmt.Sprintf("%s[%s]", r.action, r.key)
-	case ClearAll, Keys, Count, Exit:
-		body = r.action.String()
 	default:
-		panic("Unreachable")
+		body = r.action.String()
 	}
 	return fmt.Sprintf("Request(%d)<%s>", r.id, body)
 }
@@ -272,10 +285,9 @@ func ConstructRequest(args []string) (Request, error) {
 			}
 		}
 		return request[int]{key: key, action: action}, nil
-	case Keys, Count, Exit:
+	default:
 		return request[int]{action: action}, nil
 	}
-	panic("Unreachable")
 }
 
 func decodeKey(b []byte) string {
@@ -317,11 +329,10 @@ func DecodeRequest(b []byte) Request {
 			key:    key,
 			id:     generateId(),
 		}
-	case ClearAll, Keys, Count, Exit:
+	default:
 		return request[int]{
 			action: action,
 			id:     generateId(),
 		}
 	}
-	panic("Unreachable")
 }

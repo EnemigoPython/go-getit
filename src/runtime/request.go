@@ -30,6 +30,8 @@ const (
 	Values
 	Items
 	Count
+	Size
+	Space
 	Exit
 )
 
@@ -43,6 +45,8 @@ func (a Action) String() string {
 		"Values",
 		"Items",
 		"Count",
+		"Size",
+		"Space",
 		"Exit",
 	}[a]
 }
@@ -57,6 +61,8 @@ func (a Action) ToLower() string {
 		"values",
 		"items",
 		"count",
+		"size",
+		"space",
 		"exit",
 	}[a]
 }
@@ -79,6 +85,10 @@ func parseAction(s string) (Action, error) {
 		return Items, nil
 	case Count.ToLower():
 		return Count, nil
+	case Size.ToLower():
+		return Size, nil
+	case Space.ToLower():
+		return Space, nil
 	case Exit.ToLower():
 		return Exit, nil
 	default:
@@ -129,7 +139,7 @@ func (r request[T]) IsStream() bool {
 
 func (r request[T]) HasData() bool {
 	switch r.action {
-	case Store, Load, Keys, Values, Items, Count:
+	case Store, Load, Keys, Values, Items, Count, Size, Space:
 		return true
 	default:
 		return false
@@ -174,7 +184,7 @@ func (r request[T]) EncodeRequest() []byte {
 	case Store:
 		r.writeKeyBytes(buf, false)
 		r.writeDataBytes(buf, false)
-	case Load, Clear:
+	case Load, Clear, Space:
 		r.writeKeyBytes(buf, false)
 	default:
 		// no extra data fields needed
@@ -202,7 +212,7 @@ func (r request[T]) String() string {
 		default:
 			panic("Unreachable")
 		}
-	case Load, Clear:
+	case Load, Clear, Space:
 		body = fmt.Sprintf("%s[%s]", r.action, r.key)
 	default:
 		body = r.action.String()
@@ -290,6 +300,23 @@ func ConstructRequest(args []string) (Request, error) {
 			}
 		}
 		return request[int]{key: key, action: action}, nil
+	case Space:
+		if len(args) < 2 {
+			return request[int]{key: "current", action: action}, nil
+		}
+		key = args[1]
+		switch strings.ToLower(key) {
+		case "c", "current":
+			return request[int]{key: "current", action: action}, nil
+		case "e", "empty":
+			return request[int]{key: "empty", action: action}, nil
+		case "m", "max", "maximum":
+			return request[int]{key: "max", action: action}, nil
+		default:
+			return request[int]{}, RequestParseError{
+				"Space verb must be 'current', 'empty', or 'max",
+			}
+		}
 	default:
 		return request[int]{action: action}, nil
 	}
@@ -327,7 +354,7 @@ func DecodeRequest(b []byte) Request {
 			data:   data,
 			id:     generateId(),
 		}
-	case Load, Clear:
+	case Load, Clear, Space:
 		key := decodeKey(b)
 		return request[int]{
 			action: action,

@@ -18,9 +18,9 @@ func OpenStore() error {
 		return err
 	}
 	defer file.Close()
+	entries := readMetaBytes(file)
 	info, _ := os.Stat(filePath)
 	fileSize := info.Size()
-	entries := readMetaBytes(file)
 	storeMetadata = _storeMetadata{
 		size:       int64(fileSize),
 		entrySpace: (int64(fileSize) / entrySize) - 1,
@@ -186,6 +186,39 @@ func count(request runtime.Request) runtime.Response {
 	)
 }
 
+func size(request runtime.Request) runtime.Response {
+	return runtime.ConstructResponse(
+		request,
+		runtime.Ok,
+		int(storeMetadata.size),
+	)
+}
+
+func space(request runtime.Request) runtime.Response {
+	switch request.GetKey() {
+	case "current":
+		return runtime.ConstructResponse(
+			request,
+			runtime.Ok,
+			int(storeMetadata.entrySpace),
+		)
+	case "empty":
+		emptyEntries := storeMetadata.entrySpace - storeMetadata.entries
+		return runtime.ConstructResponse(
+			request,
+			runtime.Ok,
+			int(emptyEntries),
+		)
+	case "max":
+		return runtime.ConstructResponse(
+			request,
+			runtime.Ok,
+			int(maxEntrySpace),
+		)
+	}
+	return runtime.ConstructResponse(request, runtime.ServerError, 0)
+}
+
 func exit(request runtime.Request) runtime.Response {
 	return runtime.ConstructResponse(request, runtime.Ok, 0)
 }
@@ -228,6 +261,10 @@ func ProcessRequest(request runtime.Request) runtime.Response {
 		return writeOperation(clearAll, request)
 	case runtime.Count:
 		return count(request)
+	case runtime.Size:
+		return size(request)
+	case runtime.Space:
+		return space(request)
 	case runtime.Exit:
 		return exit(request)
 	}

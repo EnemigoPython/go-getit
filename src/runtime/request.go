@@ -27,6 +27,7 @@ const (
 	Clear
 	ClearAll
 	Keys
+	Values
 	Items
 	Count
 	Exit
@@ -39,6 +40,7 @@ func (a Action) String() string {
 		"Clear",
 		"ClearAll",
 		"Keys",
+		"Values",
 		"Items",
 		"Count",
 		"Exit",
@@ -52,6 +54,7 @@ func (a Action) ToLower() string {
 		"clear",
 		"clearall",
 		"keys",
+		"values",
 		"items",
 		"count",
 		"exit",
@@ -70,6 +73,8 @@ func parseAction(s string) (Action, error) {
 		return Clear, nil
 	case Keys.ToLower():
 		return Keys, nil
+	case Values.ToLower():
+		return Values, nil
 	case Items.ToLower():
 		return Items, nil
 	case Count.ToLower():
@@ -115,7 +120,7 @@ func (r request[T]) GetId() uint8      { return r.id }
 
 func (r request[T]) IsStream() bool {
 	switch r.action {
-	case Keys, Items:
+	case Keys, Values, Items:
 		return true
 	default:
 		return false
@@ -124,7 +129,7 @@ func (r request[T]) IsStream() bool {
 
 func (r request[T]) HasData() bool {
 	switch r.action {
-	case Store, Load, Keys, Items, Count:
+	case Store, Load, Keys, Values, Items, Count:
 		return true
 	default:
 		return false

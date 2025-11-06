@@ -139,7 +139,7 @@ func readEntry(index int64, fp *os.File) (decodedEntry, error) {
 	buf := make([]byte, entrySize)
 	n, err := fp.ReadAt(buf, index)
 	if runtime.Config.Debug {
-		// log.Printf("Entry bytes: % x\n", buf)
+		log.Printf("Entry bytes: % x\n", buf)
 	}
 	if err != nil {
 		return decodedEntry{}, err

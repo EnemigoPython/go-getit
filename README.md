@@ -9,9 +9,17 @@ The build script contains an example of building the binary from source (in my e
 To get started run the binary with the flag `-runtime=server` to create a server that can start serving requests
 
 ### Client
-- `store X Y` to store value Y in X (value can be a string or 32 bit number, strings are limited to 31 ASCII chars)
+- `store X Y` to store value Y in X (value can be a string or 32 bit number, strings are limited to 31 ASCII chars) -> returns `1` if new entry or `0` if data overwritten
 - `load X` to get value associated with key X (or empty return if not found)
-- `clear {X}` to delete key X (or omit to clear all)
+- `clear {X}` to delete key X (or omit to clear all) -> returns `0` if success or empty if not found
 - `keys` streams all keys set in the store
+- `values` streams all values set in the store
+- `items` streams all keys & values in the store (space separated)
 - `count` to get number of values in database
 - `exit` shuts down the server
+
+### Config Flags
+- `--runtime={client/server}` defaults to client
+- `--port=X` to set the port
+- `--store=X` sets the name of the store
+- `--debug` starts in debug mode

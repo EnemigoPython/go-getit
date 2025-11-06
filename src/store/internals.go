@@ -141,9 +141,8 @@ func decodeFileBytes(b []byte) (decodedEntry, error) {
 }
 
 func readEntry(index int64, fp *os.File) (decodedEntry, error) {
-	fp.Seek(index, io.SeekStart)
 	buf := make([]byte, entrySize)
-	n, err := fp.Read(buf)
+	n, err := fp.ReadAt(buf, index)
 	if runtime.Config.Debug {
 		log.Printf("Entry bytes: % x\n", buf)
 	}

@@ -127,7 +127,7 @@ func keys(request runtime.Request, fp *os.File, i int) runtime.Response {
 		return runtime.ConstructResponse(request, runtime.StreamDone, 0)
 	}
 	decodedEntry, err := readEntry(index, fp)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		fmt.Println(err)
 		return runtime.ConstructResponse(request, runtime.ServerError, 0)
 	}
@@ -212,7 +212,7 @@ func streamReadOperation(
 		defer fp.Close()
 		defer freeRLock()
 
-		// Feed workers with increasing indices
+		// feed next index to channel in loop
 		go func() {
 			for i := 0; ; i++ {
 				select {

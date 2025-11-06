@@ -243,11 +243,9 @@ func streamReadOperation(
 			})
 		}
 
-		// When all workers exit, we are done
-		go func() {
-			wg.Wait()
-			close(out)
-		}()
+		// exit after all workers done
+		wg.Wait()
+		close(out)
 	}()
 }
 

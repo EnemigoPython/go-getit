@@ -199,53 +199,55 @@ func streamReadOperation(
 	statusFilter []runtime.Status,
 	out chan<- runtime.Response,
 ) {
-	fp, err := getReadPointer()
-	if err != nil {
-		out <- runtime.ConstructResponse(request, runtime.ServerError, 0)
-		return
-	}
-	defer fp.Close()
-	defer freeRLock()
-
 	stop := make(chan struct{})
 	var once sync.Once
 	nextIndex := make(chan int)
 
-	// Feed workers with increasing indices
 	go func() {
-		for i := 0; ; i++ {
-			select {
-			case nextIndex <- i:
-			case <-stop:
-				close(nextIndex)
-				return
-			}
+		fp, err := getReadPointer()
+		if err != nil {
+			out <- runtime.ConstructResponse(request, runtime.ServerError, 0)
+			return
 		}
-	}()
+		defer fp.Close()
+		defer freeRLock()
 
-	var wg sync.WaitGroup
-
-	for range workerCount {
-		wg.Go(func() {
-			for idx := range nextIndex {
-				response := f(request, fp, idx)
-				if !slices.Contains(statusFilter, response.GetStatus()) {
-					out <- response
-				}
-
-				// shut down if signal is stream done
-				if response.GetStatus() == runtime.StreamDone {
-					once.Do(func() { close(stop) })
+		// Feed workers with increasing indices
+		go func() {
+			for i := 0; ; i++ {
+				select {
+				case nextIndex <- i:
+				case <-stop:
+					close(nextIndex)
 					return
 				}
 			}
-		})
-	}
+		}()
 
-	// When all workers exit, we are done
-	go func() {
-		wg.Wait()
-		close(out)
+		var wg sync.WaitGroup
+
+		for range workerCount {
+			wg.Go(func() {
+				for idx := range nextIndex {
+					response := f(request, fp, idx)
+					if !slices.Contains(statusFilter, response.GetStatus()) {
+						out <- response
+					}
+
+					// shut down if signal is stream done
+					if response.GetStatus() == runtime.StreamDone {
+						once.Do(func() { close(stop) })
+						return
+					}
+				}
+			})
+		}
+
+		// When all workers exit, we are done
+		go func() {
+			wg.Wait()
+			close(out)
+		}()
 	}()
 }
 

@@ -13,7 +13,6 @@ import (
 
 const entrySize int64 = 66       // number of bytes in file entry encoding
 const maxEntrySpace int64 = 5000 // hash & file size limit
-const seed int64 = 0xFACE        // random seed
 const maxCollisions = 3          // maximum permitted collisions
 const streamBufferSize = 100     // size of stream channel
 const workerCount = 10           // number of workers for stream
@@ -76,17 +75,13 @@ func entryIndex(i int64) int64 {
 	return i * entrySize
 }
 
-func hashKey(key string) (res int64) {
-	for i, r := range key {
-		res += seed
-		res += int64((i + 1) * int(r))
-		res <<= 1
-		res ^= seed
-		res <<= 2
-		res %= maxEntrySpace
+// Implements DJB2 hashing
+func hashKey(key string) int64 {
+	var hash uint64 = 5381
+	for _, r := range key {
+		hash = ((hash << 5) + hash) + uint64(r)
 	}
-	res += 1
-	return
+	return (int64(hash) % maxEntrySpace) + 1
 }
 
 type DecodeFileError struct {

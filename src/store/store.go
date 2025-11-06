@@ -50,7 +50,7 @@ func store(request runtime.Request, fp *os.File) runtime.Response {
 	} else {
 		decoded, err := resolveEntry(index, fp, request.GetKey())
 		if err != nil {
-			return runtime.ConstructResponse(request, runtime.ServerError, 0)
+			return runtime.ConstructResponse(request, runtime.ServerError, err.Error())
 		}
 		if !decoded.IsSet {
 			updateEntryBytes(fp, 1)
@@ -76,7 +76,7 @@ func load(request runtime.Request, fp *os.File) runtime.Response {
 	}
 	decoded, err := resolveEntry(index, fp, request.GetKey())
 	if err != nil {
-		return runtime.ConstructResponse(request, runtime.ServerError, 0)
+		return runtime.ConstructResponse(request, runtime.ServerError, err.Error())
 	}
 	if !decoded.IsSet {
 		return runtime.ConstructResponse(request, runtime.NotFound, 0)
@@ -101,7 +101,7 @@ func clear(request runtime.Request, fp *os.File) runtime.Response {
 	}
 	decoded, err := resolveEntry(index, fp, request.GetKey())
 	if err != nil {
-		return runtime.ConstructResponse(request, runtime.ServerError, 0)
+		return runtime.ConstructResponse(request, runtime.ServerError, err.Error())
 	}
 	index = decoded.Index
 	fp.Seek(index, io.SeekStart)
@@ -128,7 +128,7 @@ func keys(request runtime.Request, fp *os.File, i int) runtime.Response {
 	}
 	decoded, err := readEntry(index, fp)
 	if err != nil && err != io.EOF {
-		return runtime.ConstructResponse(request, runtime.ServerError, 0)
+		return runtime.ConstructResponse(request, runtime.ServerError, err.Error())
 	}
 	if decoded.IsSet {
 		return runtime.ConstructResponse(request, runtime.Ok, decoded.Key)
@@ -143,7 +143,7 @@ func values(request runtime.Request, fp *os.File, i int) runtime.Response {
 	}
 	decoded, err := readEntry(index, fp)
 	if err != nil && err != io.EOF {
-		return runtime.ConstructResponse(request, runtime.ServerError, 0)
+		return runtime.ConstructResponse(request, runtime.ServerError, err.Error())
 	}
 	if decoded.IsSet {
 		switch decoded.ValueType {
@@ -163,7 +163,7 @@ func items(request runtime.Request, fp *os.File, i int) runtime.Response {
 	}
 	decoded, err := readEntry(index, fp)
 	if err != nil && err != io.EOF {
-		return runtime.ConstructResponse(request, runtime.ServerError, 0)
+		return runtime.ConstructResponse(request, runtime.ServerError, err.Error())
 	}
 	if decoded.IsSet {
 		var itemRow string
@@ -216,7 +216,7 @@ func space(request runtime.Request) runtime.Response {
 			int(maxEntrySpace),
 		)
 	}
-	return runtime.ConstructResponse(request, runtime.ServerError, 0)
+	return runtime.ConstructResponse(request, runtime.ServerError, "Bad Verb")
 }
 
 func exit(request runtime.Request) runtime.Response {
@@ -229,7 +229,7 @@ func readOperation(
 ) runtime.Response {
 	fp, err := getReadPointer()
 	if err != nil {
-		return runtime.ConstructResponse(request, runtime.ServerError, 0)
+		return runtime.ConstructResponse(request, runtime.ServerError, err.Error())
 	}
 	defer fp.Close()
 	defer freeRLock()
@@ -242,7 +242,7 @@ func writeOperation(
 ) runtime.Response {
 	fp, err := getReadWritePointer()
 	if err != nil {
-		return runtime.ConstructResponse(request, runtime.ServerError, 0)
+		return runtime.ConstructResponse(request, runtime.ServerError, err.Error())
 	}
 	defer fp.Close()
 	defer freeLock()
@@ -284,7 +284,7 @@ func streamReadOperation(
 	go func() {
 		fp, err := getReadPointer()
 		if err != nil {
-			out <- runtime.ConstructResponse(request, runtime.ServerError, 0)
+			out <- runtime.ConstructResponse(request, runtime.ServerError, err.Error())
 			return
 		}
 		defer fp.Close()

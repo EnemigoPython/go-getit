@@ -38,7 +38,9 @@ func MakeRequest(request runtime.Request) {
 			fmt.Println(response)
 		}
 
+		// don't read stream done to stdout
 		if response.GetStatus() != runtime.StreamDone {
+			// read all other responses
 			fmt.Println(response.DataPayload())
 		}
 

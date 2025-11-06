@@ -1,9 +1,11 @@
 package store
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
+	"slices"
 	"sync"
 
 	"github.com/EnemigoPython/go-getit/src/runtime"
@@ -119,11 +121,20 @@ func clearAll(request runtime.Request, fp *os.File) runtime.Response {
 	return runtime.ConstructResponse(request, runtime.Ok, 0)
 }
 
-func keys(request runtime.Request, fp *os.File, index int) runtime.Response {
-	if index > 5 {
+func keys(request runtime.Request, fp *os.File, i int) runtime.Response {
+	index := entryIndex(int64(i + 1))
+	if storeMetadata.size < index {
 		return runtime.ConstructResponse(request, runtime.StreamDone, 0)
 	}
-	return runtime.ConstructResponse(request, runtime.Ok, index)
+	decodedEntry, err := readEntry(index, fp)
+	if err != nil {
+		fmt.Println(err)
+		return runtime.ConstructResponse(request, runtime.ServerError, 0)
+	}
+	if decodedEntry.IsSet {
+		return runtime.ConstructResponse(request, runtime.Ok, decodedEntry.Key)
+	}
+	return runtime.ConstructResponse(request, runtime.NotFound, 0)
 }
 
 func count(request runtime.Request) runtime.Response {
@@ -185,6 +196,7 @@ func ProcessRequest(request runtime.Request) runtime.Response {
 func streamReadOperation(
 	f func(runtime.Request, *os.File, int) runtime.Response,
 	request runtime.Request,
+	statusFilter []runtime.Status,
 	out chan<- runtime.Response,
 ) {
 	fp, err := getReadPointer()
@@ -196,6 +208,7 @@ func streamReadOperation(
 	defer freeRLock()
 
 	stop := make(chan struct{})
+	var once sync.Once
 	nextIndex := make(chan int)
 
 	// Feed workers with increasing indices
@@ -216,11 +229,13 @@ func streamReadOperation(
 		wg.Go(func() {
 			for idx := range nextIndex {
 				response := f(request, fp, idx)
-				out <- response
+				if !slices.Contains(statusFilter, response.GetStatus()) {
+					out <- response
+				}
 
-				// If a worker gets a non-OK response, shut everything down
-				if response.GetStatus() != runtime.Ok {
-					close(stop)
+				// shut down if signal is stream done
+				if response.GetStatus() == runtime.StreamDone {
+					once.Do(func() { close(stop) })
 					return
 				}
 			}
@@ -237,7 +252,12 @@ func streamReadOperation(
 func ProcessStreamRequest(request runtime.Request) <-chan runtime.Response {
 	out := make(chan runtime.Response, streamBufferSize)
 
-	go streamReadOperation(keys, request, out)
+	switch request.GetAction() {
+	case runtime.Keys:
+		go streamReadOperation(keys, request, keysFilter, out)
+	default:
+		panic("Unreachable")
+	}
 
 	return out
 }

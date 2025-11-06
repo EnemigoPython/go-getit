@@ -18,6 +18,8 @@ const maxCollisions = 3          // maximum permitted collisions
 const streamBufferSize = 100     // size of stream channel
 const workerCount = 10           // number of workers for stream
 
+var keysFilter = []runtime.Status{runtime.NotFound}
+
 type _storeMetadata struct {
 	size       int64
 	entrySpace int64

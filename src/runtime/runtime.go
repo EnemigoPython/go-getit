@@ -49,6 +49,7 @@ type _Config struct {
 	Port      int
 	StoreName string
 	Debug     bool
+	NoLog     bool
 	StorePath string
 	LogPath   string
 }
@@ -90,6 +91,7 @@ func ParseConfig(
 	port int,
 	storeName string,
 	debug bool,
+	noLog bool,
 ) (_Config, error) {
 	runTime, err := parseRunTime(runTimeStr)
 	if err != nil {
@@ -100,6 +102,7 @@ func ParseConfig(
 		Port:      port,
 		StoreName: storeName,
 		Debug:     debug,
+		NoLog:     noLog,
 		StorePath: getStorePath(storeName),
 		LogPath:   getLogPath(storeName, debug),
 	}

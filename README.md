@@ -25,3 +25,4 @@ To get started run the binary with the flag `-runtime=server` to create a server
 - `--port=X` to set the port
 - `--store=X` sets the name of the store
 - `--debug` starts in debug mode
+- `--no-log` disables file logging

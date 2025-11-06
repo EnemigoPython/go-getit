@@ -11,6 +11,9 @@ import (
 var logFile *os.File
 
 func configureLogger() {
+	if runtime.Config.NoLog {
+		return
+	}
 	logFile, err := os.OpenFile(
 		runtime.Config.LogPath,
 		os.O_CREATE|os.O_WRONLY|os.O_APPEND,
@@ -31,5 +34,7 @@ func configureLogger() {
 
 func shutdown() {
 	log.Print("Exiting\n\n")
-	logFile.Close()
+	if !runtime.Config.NoLog {
+		logFile.Close()
+	}
 }

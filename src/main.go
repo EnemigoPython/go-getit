@@ -14,12 +14,14 @@ func main() {
 	portFlag := flag.Int("port", 6969, "The port the server will run on")
 	storeNameFlag := flag.String("store", "store", "The name of the store file")
 	debugFlag := flag.Bool("debug", false, "Run in debug mode")
+	noLogFlag := flag.Bool("no-log", false, "Set to true to disable file logging")
 	flag.Parse()
 	config, err := runtime.ParseConfig(
 		*runTimeFlag,
 		*portFlag,
 		*storeNameFlag,
 		*debugFlag,
+		*noLogFlag,
 	)
 	if err != nil {
 		log.Fatal(err)

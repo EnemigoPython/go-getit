@@ -12,5 +12,6 @@ To get started run the binary with the flag `-runtime=server` to create a server
 - `store X Y` to store value Y in X (value can be a string or 32 bit number, strings are limited to 31 ASCII chars)
 - `load X` to get value associated with key X (or empty return if not found)
 - `clear {X}` to delete key X (or omit to clear all)
+- `keys` streams all keys set in the store
 - `count` to get number of values in database
 - `exit` shuts down the server

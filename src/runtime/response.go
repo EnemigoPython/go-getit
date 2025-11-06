@@ -50,7 +50,7 @@ func (r response[T]) StreamDone() bool {
 
 func (r response[T]) String() string {
 	var body string
-	if r.hasData {
+	if r.hasData && r.status == Ok {
 		switch d := any(r.data).(type) {
 		case int:
 			body = fmt.Sprintf("%s,%d", r.status, d)

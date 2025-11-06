@@ -30,6 +30,7 @@ func OpenStore() error {
 func store(request runtime.Request, fp *os.File) runtime.Response {
 	hash := hashKey(request.GetKey())
 	index := entryIndex(hash)
+	var code int // 0=overwrite value, 1=new value
 	if runtime.Config.Debug {
 		log.Printf("Hash: %d, Index: %d\n", hash, index)
 	}
@@ -42,6 +43,7 @@ func store(request runtime.Request, fp *os.File) runtime.Response {
 		storeMetadata.size += paddingLen
 		storeMetadata.entrySpace += paddingLen / entrySize
 		updateEntryBytes(fp, 1)
+		code = 1
 	} else {
 		decoded, err := resolveEntry(index, fp, request.GetKey())
 		if err != nil {
@@ -49,6 +51,7 @@ func store(request runtime.Request, fp *os.File) runtime.Response {
 		}
 		if !decoded.IsSet {
 			updateEntryBytes(fp, 1)
+			code = 1
 		}
 		index = decoded.Index
 	}
@@ -56,7 +59,7 @@ func store(request runtime.Request, fp *os.File) runtime.Response {
 	fp.Write(request.EncodeFileBytes())
 	storeMetadata.size += entrySize
 	storeMetadata.entrySpace++
-	return runtime.ConstructResponse(request, runtime.Ok, 0)
+	return runtime.ConstructResponse(request, runtime.Ok, code)
 }
 
 func load(request runtime.Request, fp *os.File) runtime.Response {

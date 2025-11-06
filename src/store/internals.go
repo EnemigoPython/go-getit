@@ -154,7 +154,6 @@ func readEntry(index int64, fp *os.File) (decodedEntry, error) {
 		return decodedEntry{}, err
 	}
 	decoded.Index = index
-	fp.Seek(-index, io.SeekCurrent)
 	return decoded, nil
 }
 

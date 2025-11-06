@@ -54,6 +54,17 @@ func Run() {
 			}
 			request := runtime.DecodeRequest(requestBytes)
 			log.Println(request)
+			if request.IsStream() {
+				for response := range store.ProcessStreamRequest(request) {
+					log.Println(response)
+					responseBytes := response.EncodeResponse()
+					if runtime.Config.Debug {
+						log.Printf("Response bytes: % x\n", responseBytes)
+					}
+					c.Write(responseBytes)
+				}
+				return
+			}
 			response := store.ProcessRequest(request)
 			log.Println(response)
 			responseBytes := response.EncodeResponse()

@@ -26,15 +26,24 @@ func MakeRequest(request runtime.Request) {
 		fmt.Println(request)
 	}
 
-	// Read the response
-	buf := make([]byte, 1024)
-	n, err := conn.Read(buf)
-	if err != nil {
-		log.Fatal(err)
+	for {
+		// Read the response
+		buf := make([]byte, 1024)
+		n, err := conn.Read(buf)
+		if err != nil {
+			log.Fatal(err)
+		}
+		response := runtime.DecodeResponse(buf[:n])
+		if runtime.Config.Debug {
+			fmt.Println(response)
+		}
+
+		if response.GetStatus() != runtime.StreamDone {
+			fmt.Println(response.DataPayload())
+		}
+
+		if !request.IsStream() || response.GetStatus() != runtime.Ok {
+			break
+		}
 	}
-	response := runtime.DecodeResponse(buf[:n])
-	if runtime.Config.Debug {
-		fmt.Println(response)
-	}
-	fmt.Println(response.DataPayload())
 }

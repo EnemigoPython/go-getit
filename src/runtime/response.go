@@ -15,31 +15,38 @@ type Status byte
 const (
 	Ok Status = iota
 	NotFound
+	StreamDone
 	ServerError
 )
 
 func (s Status) String() string {
-	return [...]string{"Ok", "NotFound", "ServerError"}[s]
+	return [...]string{"Ok", "NotFound", "StreamDone", "ServerError"}[s]
 }
 
 func (s Status) ToLower() string {
-	return [...]string{"ok", "notfound", "servererror"}[s]
+	return [...]string{"ok", "notfound", "streamdone", "servererror"}[s]
 }
 
 type response[T types.IntOrString] struct {
-	status  Status
-	data    T
-	hasData bool
-	id      uint8
+	status   Status
+	data     T
+	hasData  bool
+	id       uint8
+	isStream bool
 }
 
 type Response interface {
 	GetStatus() Status
+	StreamDone() bool
 	EncodeResponse() []byte
 	DataPayload() string
 }
 
 func (r response[T]) GetStatus() Status { return r.status }
+
+func (r response[T]) StreamDone() bool {
+	return r.isStream && r.status == Ok
+}
 
 func (r response[T]) String() string {
 	var body string
@@ -90,25 +97,28 @@ func (r response[T]) DataPayload() string {
 }
 
 func ConstructResponse[T types.IntOrString](request Request, status Status, data T) Response {
+	isStream := request.IsStream()
 	var hasData bool
 	switch request.GetAction() {
-	case Store, Load, Count:
+	case Store, Load, Keys, Count:
 		hasData = true
 	}
 	switch v := any(data).(type) {
 	case int:
 		return response[int]{
-			status:  status,
-			data:    v,
-			id:      request.GetId(),
-			hasData: hasData,
+			status:   status,
+			data:     v,
+			id:       request.GetId(),
+			hasData:  hasData,
+			isStream: isStream,
 		}
 	case string:
 		return response[string]{
-			status:  status,
-			data:    v,
-			id:      request.GetId(),
-			hasData: hasData,
+			status:   status,
+			data:     v,
+			id:       request.GetId(),
+			hasData:  hasData,
+			isStream: isStream,
 		}
 	}
 	panic("Unreachable")

@@ -26,16 +26,33 @@ const (
 	Load
 	Clear
 	ClearAll
+	Keys
 	Count
 	Exit
 )
 
 func (a Action) String() string {
-	return [...]string{"Store", "Load", "Clear", "ClearAll", "Count", "Exit"}[a]
+	return [...]string{
+		"Store",
+		"Load",
+		"Clear",
+		"ClearAll",
+		"Keys",
+		"Count",
+		"Exit",
+	}[a]
 }
 
 func (a Action) ToLower() string {
-	return [...]string{"store", "load", "clear", "clearall", "count", "exit"}[a]
+	return [...]string{
+		"store",
+		"load",
+		"clear",
+		"clearall",
+		"keys",
+		"count",
+		"exit",
+	}[a]
 }
 
 func parseAction(s string) (Action, error) {
@@ -48,6 +65,8 @@ func parseAction(s string) (Action, error) {
 		return Load, nil
 	case Clear.ToLower():
 		return Clear, nil
+	case Keys.ToLower():
+		return Keys, nil
 	case Count.ToLower():
 		return Count, nil
 	case Exit.ToLower():
@@ -79,6 +98,7 @@ type Request interface {
 	GetAction() Action
 	GetKey() string
 	GetId() uint8
+	IsStream() bool
 	EncodeRequest() []byte
 	EncodeFileBytes() []byte
 }
@@ -86,6 +106,15 @@ type Request interface {
 func (r request[T]) GetAction() Action { return r.action }
 func (r request[T]) GetKey() string    { return r.key }
 func (r request[T]) GetId() uint8      { return r.id }
+
+func (r request[T]) IsStream() bool {
+	switch r.action {
+	case Keys:
+		return true
+	default:
+		return false
+	}
+}
 
 func (r request[T]) writeKeyBytes(buf *bytes.Buffer, pad bool) {
 	keyLen := len(r.key)
@@ -155,7 +184,7 @@ func (r request[T]) String() string {
 		}
 	case Load, Clear:
 		body = fmt.Sprintf("%s[%s]", r.action, r.key)
-	case ClearAll, Count, Exit:
+	case ClearAll, Keys, Count, Exit:
 		body = r.action.String()
 	default:
 		panic("Unreachable")
@@ -243,7 +272,7 @@ func ConstructRequest(args []string) (Request, error) {
 			}
 		}
 		return request[int]{key: key, action: action}, nil
-	case Count, Exit:
+	case Keys, Count, Exit:
 		return request[int]{action: action}, nil
 	}
 	panic("Unreachable")
@@ -288,7 +317,7 @@ func DecodeRequest(b []byte) Request {
 			key:    key,
 			id:     generateId(),
 		}
-	case ClearAll, Count, Exit:
+	case ClearAll, Keys, Count, Exit:
 		return request[int]{
 			action: action,
 			id:     generateId(),

@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/EnemigoPython/go-getit/src/runtime"
 )
@@ -118,6 +119,13 @@ func clearAll(request runtime.Request, fp *os.File) runtime.Response {
 	return runtime.ConstructResponse(request, runtime.Ok, 0)
 }
 
+func keys(request runtime.Request, fp *os.File, index int) runtime.Response {
+	if index > 5 {
+		return runtime.ConstructResponse(request, runtime.StreamDone, 0)
+	}
+	return runtime.ConstructResponse(request, runtime.Ok, index)
+}
+
 func count(request runtime.Request) runtime.Response {
 	return runtime.ConstructResponse(
 		request,
@@ -172,4 +180,64 @@ func ProcessRequest(request runtime.Request) runtime.Response {
 		return exit(request)
 	}
 	panic("Unreachable")
+}
+
+func streamReadOperation(
+	f func(runtime.Request, *os.File, int) runtime.Response,
+	request runtime.Request,
+	out chan<- runtime.Response,
+) {
+	fp, err := getReadPointer()
+	if err != nil {
+		out <- runtime.ConstructResponse(request, runtime.ServerError, 0)
+		return
+	}
+	defer fp.Close()
+	defer freeRLock()
+
+	stop := make(chan struct{})
+	nextIndex := make(chan int)
+
+	// Feed workers with increasing indices
+	go func() {
+		for i := 0; ; i++ {
+			select {
+			case nextIndex <- i:
+			case <-stop:
+				close(nextIndex)
+				return
+			}
+		}
+	}()
+
+	var wg sync.WaitGroup
+
+	for range workerCount {
+		wg.Go(func() {
+			for idx := range nextIndex {
+				response := f(request, fp, idx)
+				out <- response
+
+				// If a worker gets a non-OK response, shut everything down
+				if response.GetStatus() != runtime.Ok {
+					close(stop)
+					return
+				}
+			}
+		})
+	}
+
+	// When all workers exit, we are done
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+}
+
+func ProcessStreamRequest(request runtime.Request) <-chan runtime.Response {
+	out := make(chan runtime.Response, streamBufferSize)
+
+	go streamReadOperation(keys, request, out)
+
+	return out
 }

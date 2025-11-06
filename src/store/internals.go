@@ -15,6 +15,8 @@ const entrySize int64 = 66       // number of bytes in file entry encoding
 const maxEntrySpace int64 = 5000 // hash & file size limit
 const seed int64 = 0xFACE        // random seed
 const maxCollisions = 3          // maximum permitted collisions
+const streamBufferSize = 100     // size of stream channel
+const workerCount = 10           // number of workers for stream
 
 type _storeMetadata struct {
 	size       int64

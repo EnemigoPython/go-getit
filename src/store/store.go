@@ -24,7 +24,7 @@ func OpenStore() error {
 	fileSize := info.Size()
 	storeMetadata = _storeMetadata{
 		size:       int64(fileSize),
-		entrySpace: (int64(fileSize) / entrySize) - 1,
+		tableSpace: (int64(fileSize) / entrySize) - 1,
 		entries:    entries,
 	}
 	log.Printf("Using store '%s'\n", filePath)
@@ -206,7 +206,7 @@ func clearAll(request runtime.Request, fp *os.File) runtime.Response {
 	minSize := minFileBytes()
 	fp.Truncate(minSize)
 	storeMetadata.size = minSize
-	storeMetadata.entrySpace = minEntrySpace
+	storeMetadata.tableSpace = minTableSpace
 	updateEntryBytes(fp, -storeMetadata.entries)
 	return runtime.ConstructResponse(request, runtime.Ok, 0)
 }
@@ -280,6 +280,14 @@ func items(request runtime.Request, fp *os.File, i int) runtime.Response {
 	return runtime.ConstructResponse(request, runtime.NotFound, 0)
 }
 
+func resize(request runtime.Request, fp *os.File) runtime.Response {
+	return runtime.ConstructResponse(
+		request,
+		runtime.Ok,
+		0,
+	)
+}
+
 func count(request runtime.Request) runtime.Response {
 	return runtime.ConstructResponse(
 		request,
@@ -302,10 +310,10 @@ func space(request runtime.Request) runtime.Response {
 		return runtime.ConstructResponse(
 			request,
 			runtime.Ok,
-			int(storeMetadata.entrySpace),
+			int(storeMetadata.tableSpace),
 		)
 	case "empty":
-		emptyEntries := storeMetadata.entrySpace - storeMetadata.entries
+		emptyEntries := storeMetadata.tableSpace - storeMetadata.entries
 		return runtime.ConstructResponse(
 			request,
 			runtime.Ok,
@@ -367,6 +375,8 @@ func ProcessRequest(request runtime.Request) runtime.Response {
 		return writeOperation(clear, request)
 	case runtime.ClearAll:
 		return writeOperation(clearAll, request)
+	case runtime.Resize:
+		return writeOperation(resize, request)
 	case runtime.Count:
 		return count(request)
 	case runtime.Size:
@@ -415,7 +425,6 @@ func streamReadOperation(
 		}()
 
 		var wg sync.WaitGroup
-
 		for range workerCount {
 			wg.Go(func() {
 				for idx := range nextIndex {
@@ -432,7 +441,6 @@ func streamReadOperation(
 				}
 			})
 		}
-
 		// exit after all workers done
 		wg.Wait()
 		close(out)

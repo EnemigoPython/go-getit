@@ -31,6 +31,7 @@ const (
 	Keys
 	Values
 	Items
+	Resize
 	Count
 	Size
 	Space
@@ -55,6 +56,7 @@ func (a Action) String() string {
 		"Keys",
 		"Values",
 		"Items",
+		"Resize",
 		"Count",
 		"Size",
 		"Space",
@@ -73,6 +75,7 @@ func (a Action) ToLower() string {
 		"keys",
 		"values",
 		"items",
+		"resize",
 		"count",
 		"size",
 		"space",
@@ -100,6 +103,8 @@ func parseAction(s string) (Action, error) {
 		return Values, nil
 	case Items.ToLower():
 		return Items, nil
+	case Resize.ToLower():
+		return Resize, nil
 	case Count.ToLower():
 		return Count, nil
 	case Size.ToLower():
@@ -218,6 +223,8 @@ func (r request[T]) EncodeRequest() []byte {
 		r.writeDataBytes(buf, false)
 	case Load, Clear, Space:
 		r.writeKeyBytes(buf, false)
+	case Resize:
+		r.writeDataBytes(buf, false)
 	default:
 		// no extra data fields needed
 	}
@@ -241,6 +248,13 @@ func (r request[T]) String() string {
 			body = fmt.Sprintf("%s[%s:%d]", r.action, r.key, d)
 		case string:
 			body = fmt.Sprintf("%s[%s:'%s']", r.action, r.key, d)
+		default:
+			panic("Unreachable")
+		}
+	case Resize:
+		switch d := any(r.data).(type) {
+		case int:
+			body = fmt.Sprintf("%s[%d]", r.action, d)
 		default:
 			panic("Unreachable")
 		}
@@ -302,6 +316,28 @@ func ConstructRequest(args []string) (Request, error) {
 			}
 		}
 		return request[string]{key: key, data: data, action: action}, nil
+	case Resize:
+		if len(args) < 1 {
+			return request[int]{}, RequestParseError{
+				errorStr: "need 2 args for resize",
+			}
+		}
+		data = args[1]
+		if i, err := strconv.Atoi(data); err == nil {
+			if i < math.MinInt32 || i > math.MaxInt32 {
+				return request[int]{}, RequestParseError{
+					errorStr: fmt.Sprintf(
+						"invalid int data (must be %d-%d)",
+						math.MinInt32,
+						math.MaxInt32,
+					),
+				}
+			}
+			return request[int]{data: i, action: action}, nil
+		}
+		return request[int]{}, RequestParseError{
+			errorStr: "data for resize must be an integer",
+		}
 	case Add, Sub:
 		if len(args) < 3 {
 			return request[int]{}, RequestParseError{
@@ -426,6 +462,13 @@ func DecodeRequest(b []byte) Request {
 		return request[int]{
 			action: action,
 			key:    key,
+			id:     generateId(),
+		}
+	case Resize:
+		data := int32(binary.BigEndian.Uint32(b[2:]))
+		return request[int]{
+			action: action,
+			data:   int(data),
 			id:     generateId(),
 		}
 	default:

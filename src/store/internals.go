@@ -14,7 +14,7 @@ import (
 )
 
 const entrySize int64 = 66             // number of bytes in file entry encoding
-const minEntrySpace int64 = 50         // default hash & file size limit
+const minTableSpace int64 = 50         // default hash & file size limit
 const sizeUpThreshold float64 = 0.4    // % empty to trigger resize up
 const sizeDownThreshold float64 = 0.05 // % empty to trigger resize down
 const streamBufferSize = 100           // size of stream channel
@@ -24,7 +24,7 @@ var notFoundFilter = []runtime.Status{runtime.NotFound}
 
 type _storeMetadata struct {
 	size       int64 // size in bytes
-	entrySpace int64 // current entry space
+	tableSpace int64 // current table space
 	entries    int64 // number of entries
 }
 
@@ -55,9 +55,9 @@ func getReadWritePointer() (*os.File, error) {
 func freeLock()  { mutex.Unlock() }
 func freeRLock() { mutex.RUnlock() }
 
-// Returns size for metadata + min entry space
+// Returns size for metadata + min table space
 func minFileBytes() int64 {
-	return (minEntrySpace * entrySize) + entrySize
+	return (minTableSpace * entrySize) + entrySize
 }
 
 func readMetaBytes(fp *os.File) int64 {
@@ -65,7 +65,7 @@ func readMetaBytes(fp *os.File) int64 {
 	buf := make([]byte, 4)
 	_, err := fp.Read(buf)
 	if err != nil {
-		// new store; write empty metadata + min entry space
+		// new store; write empty metadata + min table space
 		newMetaBytes := make([]byte, minFileBytes())
 		fp.Write(newMetaBytes)
 	}
@@ -75,14 +75,14 @@ func readMetaBytes(fp *os.File) int64 {
 
 // Check size ratio against resize parameters; initiate resize if needed
 func checkResize() {
-	log.Println(float64(storeMetadata.entries) / float64(storeMetadata.entrySpace))
-	if float64(storeMetadata.entries)/float64(storeMetadata.entrySpace) >
+	log.Println(float64(storeMetadata.entries) / float64(storeMetadata.tableSpace))
+	if float64(storeMetadata.entries)/float64(storeMetadata.tableSpace) >
 		sizeUpThreshold {
-		// TODO
+		// target := storeMetadata.entrySpace * 2
 	}
-	if float64(storeMetadata.entries)/float64(storeMetadata.entrySpace) <
+	if float64(storeMetadata.entries)/float64(storeMetadata.tableSpace) <
 		sizeDownThreshold && storeMetadata.size > minFileBytes() {
-		// TODO
+		// target := storeMetadata.entrySpace / 2
 	}
 }
 
@@ -103,7 +103,7 @@ func hashKey(key string) int64 {
 	for _, r := range key {
 		hash = ((hash << 5) + hash) + uint64(r)
 	}
-	return (int64(hash) % storeMetadata.entrySpace) + 1
+	return (int64(hash) % storeMetadata.tableSpace) + 1
 }
 
 type DecodeFileError struct {
@@ -179,7 +179,7 @@ func readEntry(index int64, fp *os.File) (decodedEntry, error) {
 
 func resolveEntry(index int64, fp *os.File, key string) (decodedEntry, error) {
 	// this should not be realistically exceeded unless there is a bad failure
-	maxPermittedCollisions := storeMetadata.entrySpace / 10
+	maxPermittedCollisions := storeMetadata.tableSpace / 10
 	for range maxPermittedCollisions {
 		decoded, err := readEntry(index, fp)
 		if err != nil {

@@ -130,10 +130,11 @@ func generateId() uint8 {
 const maxStringLen = 31
 
 type request[T types.IntOrString] struct {
-	action Action
-	key    string
-	data   T
-	id     uint8
+	action   Action
+	key      string
+	data     T
+	id       uint8
+	internal bool
 }
 
 type Request interface {
@@ -254,7 +255,11 @@ func (r request[T]) String() string {
 	case Resize:
 		switch d := any(r.data).(type) {
 		case int:
-			body = fmt.Sprintf("%s[%d]", r.action, d)
+			if r.internal {
+				body = fmt.Sprintf("Auto%s[%d]", r.action, d)
+			} else {
+				body = fmt.Sprintf("%s[%d]", r.action, d)
+			}
 		default:
 			panic("Unreachable")
 		}
@@ -266,7 +271,7 @@ func (r request[T]) String() string {
 	return fmt.Sprintf("Request(%d)<%s>", r.id, body)
 }
 
-func ConstructRequest(args []string) (Request, error) {
+func ConstructRequest(args []string, internal bool) (Request, error) {
 	if len(args) == 0 {
 		return request[int]{}, RequestParseError{
 			errorStr: "enter a command",
@@ -305,7 +310,12 @@ func ConstructRequest(args []string) (Request, error) {
 					),
 				}
 			}
-			return request[int]{key: key, data: i, action: action}, nil
+			return request[int]{
+				key:      key,
+				data:     i,
+				action:   action,
+				internal: internal,
+			}, nil
 		}
 		if len(data) > maxStringLen {
 			return request[int]{}, RequestParseError{
@@ -315,7 +325,12 @@ func ConstructRequest(args []string) (Request, error) {
 				),
 			}
 		}
-		return request[string]{key: key, data: data, action: action}, nil
+		return request[string]{
+			key:      key,
+			data:     data,
+			action:   action,
+			internal: internal,
+		}, nil
 	case Resize:
 		if len(args) < 1 {
 			return request[int]{}, RequestParseError{
@@ -333,7 +348,11 @@ func ConstructRequest(args []string) (Request, error) {
 					),
 				}
 			}
-			return request[int]{data: i, action: action}, nil
+			return request[int]{
+				data:     i,
+				action:   action,
+				internal: internal,
+			}, nil
 		}
 		return request[int]{}, RequestParseError{
 			errorStr: "data for resize must be an integer",
@@ -367,7 +386,12 @@ func ConstructRequest(args []string) (Request, error) {
 					),
 				}
 			}
-			return request[int]{key: key, data: i, action: action}, nil
+			return request[int]{
+				key:      key,
+				data:     i,
+				action:   action,
+				internal: internal,
+			}, nil
 		}
 		return request[int]{}, RequestParseError{
 			errorStr: fmt.Sprintf(
@@ -390,10 +414,14 @@ func ConstructRequest(args []string) (Request, error) {
 				),
 			}
 		}
-		return request[int]{key: key, action: action}, nil
+		return request[int]{
+			key:      key,
+			action:   action,
+			internal: internal,
+		}, nil
 	case Clear:
 		if len(args) < 2 {
-			return request[int]{action: ClearAll}, nil
+			return request[int]{action: ClearAll, internal: internal}, nil
 		}
 		key = args[1]
 		if len(key) > maxStringLen {
@@ -407,21 +435,33 @@ func ConstructRequest(args []string) (Request, error) {
 		return request[int]{key: key, action: action}, nil
 	case Space:
 		if len(args) < 2 {
-			return request[int]{key: "current", action: action}, nil
+			return request[int]{
+				key:      "current",
+				action:   action,
+				internal: internal,
+			}, nil
 		}
 		key = args[1]
 		switch strings.ToLower(key) {
 		case "c", "current":
-			return request[int]{key: "current", action: action}, nil
+			return request[int]{
+				key:      "current",
+				action:   action,
+				internal: internal,
+			}, nil
 		case "e", "empty":
-			return request[int]{key: "empty", action: action}, nil
+			return request[int]{
+				key:      "empty",
+				action:   action,
+				internal: internal,
+			}, nil
 		default:
 			return request[int]{}, RequestParseError{
 				"Space verb must be 'current' or 'empty'",
 			}
 		}
 	default:
-		return request[int]{action: action}, nil
+		return request[int]{action: action, internal: internal}, nil
 	}
 }
 

@@ -75,6 +75,9 @@ func readMetaBytes(fp *os.File) int64 {
 
 // Check size ratio against resize parameters; initiate resize if needed
 func checkResize() {
+	x := []string{"resize", "20"}
+	request, _ := runtime.ConstructRequest(x, true)
+	fmt.Println(request)
 	log.Println(float64(storeMetadata.entries) / float64(storeMetadata.tableSpace))
 	if float64(storeMetadata.entries)/float64(storeMetadata.tableSpace) >
 		sizeUpThreshold {

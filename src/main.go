@@ -30,7 +30,7 @@ func main() {
 	case runtime.Server:
 		server.Run()
 	case runtime.Client:
-		request, err := runtime.ConstructRequest(flag.Args())
+		request, err := runtime.ConstructRequest(flag.Args(), false)
 		if err != nil {
 			log.Fatal(err)
 		}

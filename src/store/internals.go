@@ -13,13 +13,12 @@ import (
 	"github.com/EnemigoPython/go-getit/src/types"
 )
 
-const entrySize int64 = 66            // number of bytes in file entry encoding
-const minEntrySpace int64 = 50        // default hash & file size limit
-const sizeUpThreshold float64 = 0.4   // % empty to trigger resize up
-const sizeDownThreshold float64 = 0.1 // % empty to trigger resize down
-const maxCollisions = 3               // maximum permitted collisions
-const streamBufferSize = 100          // size of stream channel
-const workerCount = 10                // number of workers for stream
+const entrySize int64 = 66             // number of bytes in file entry encoding
+const minEntrySpace int64 = 50         // default hash & file size limit
+const sizeUpThreshold float64 = 0.4    // % empty to trigger resize up
+const sizeDownThreshold float64 = 0.05 // % empty to trigger resize down
+const streamBufferSize = 100           // size of stream channel
+const workerCount = 10                 // number of workers for stream
 
 var notFoundFilter = []runtime.Status{runtime.NotFound}
 
@@ -72,6 +71,19 @@ func readMetaBytes(fp *os.File) int64 {
 	}
 	entries := int32(binary.BigEndian.Uint32(buf))
 	return int64(entries)
+}
+
+// Check size ratio against resize parameters; initiate resize if needed
+func checkResize() {
+	log.Println(float64(storeMetadata.entries) / float64(storeMetadata.entrySpace))
+	if float64(storeMetadata.entries)/float64(storeMetadata.entrySpace) >
+		sizeUpThreshold {
+		// TODO
+	}
+	if float64(storeMetadata.entries)/float64(storeMetadata.entrySpace) <
+		sizeDownThreshold && storeMetadata.size > minFileBytes() {
+		// TODO
+	}
 }
 
 // Write an update to number of entries in file metadata
@@ -166,11 +178,18 @@ func readEntry(index int64, fp *os.File) (decodedEntry, error) {
 }
 
 func resolveEntry(index int64, fp *os.File, key string) (decodedEntry, error) {
-	for range maxCollisions {
+	// this should not be realistically exceeded unless there is a bad failure
+	maxPermittedCollisions := storeMetadata.entrySpace / 10
+	for range maxPermittedCollisions {
 		decoded, err := readEntry(index, fp)
 		if err != nil {
-			log.Printf("Error; hit end of file at index %d\n", index)
-			return decodedEntry{}, DecodeFileError{errorStr: "EOF"}
+			if err == io.EOF {
+				// wrap around if needed
+				index = entrySize
+				continue
+			}
+			log.Printf("Error resolving key %s: %v\n", key, err)
+			return decodedEntry{}, DecodeFileError{errorStr: err.Error()}
 		}
 		if !decoded.IsSet || decoded.Key == key {
 			return decoded, nil

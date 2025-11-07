@@ -56,6 +56,7 @@ func store(request runtime.Request, fp *os.File) runtime.Response {
 	if !decoded.IsSet {
 		updateEntryBytes(fp, 1)
 		code = 1
+		go checkResize()
 	}
 	index = decoded.Index
 	fp.Seek(index, io.SeekStart)
@@ -194,8 +195,11 @@ func clear(request runtime.Request, fp *os.File) runtime.Response {
 	if decoded.IsSet {
 		// if the entry was previously set decrement the entries counter
 		updateEntryBytes(fp, -1)
+		go checkResize()
+		return runtime.ConstructResponse(request, runtime.Ok, 0)
+
 	}
-	return runtime.ConstructResponse(request, runtime.Ok, 0)
+	return runtime.ConstructResponse(request, runtime.NotFound, 0)
 }
 
 func clearAll(request runtime.Request, fp *os.File) runtime.Response {

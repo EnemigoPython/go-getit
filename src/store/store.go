@@ -39,30 +39,27 @@ func store(request runtime.Request, fp *os.File) runtime.Response {
 		log.Printf("Hash: %d, Index: %d\n", hash, index)
 	}
 	if storeMetadata.size < index {
-		fp.Seek(0, io.SeekEnd)
-		extraPadding := entrySize * 3 // for collision cases
-		paddingLen := (index - storeMetadata.size) + extraPadding
-		paddedBytes := make([]byte, paddingLen)
-		fp.Write(paddedBytes)
-		storeMetadata.size += paddingLen
-		storeMetadata.entrySpace += paddingLen / entrySize
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			"Index outside of file",
+		)
+	}
+	decoded, err := resolveEntry(index, fp, request.GetKey())
+	if err != nil {
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			err.Error(),
+		)
+	}
+	if !decoded.IsSet {
 		updateEntryBytes(fp, 1)
 		code = 1
-	} else {
-		decoded, err := resolveEntry(index, fp, request.GetKey())
-		if err != nil {
-			return runtime.ConstructResponse(request, runtime.ServerError, err.Error())
-		}
-		if !decoded.IsSet {
-			updateEntryBytes(fp, 1)
-			code = 1
-		}
-		index = decoded.Index
 	}
+	index = decoded.Index
 	fp.Seek(index, io.SeekStart)
 	fp.Write(request.EncodeFileBytes())
-	storeMetadata.size += entrySize
-	storeMetadata.entrySpace++
 	return runtime.ConstructResponse(request, runtime.Ok, code)
 }
 
@@ -77,11 +74,19 @@ func arithmeticOperation(
 		log.Printf("Hash: %d, Index: %d\n", hash, index)
 	}
 	if storeMetadata.size < index {
-		return runtime.ConstructResponse(request, runtime.NotFound, 0)
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			"Index outside of file",
+		)
 	}
 	decoded, err := resolveEntry(index, fp, request.GetKey())
 	if err != nil {
-		return runtime.ConstructResponse(request, runtime.ServerError, err.Error())
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			err.Error(),
+		)
 	}
 	if !decoded.IsSet {
 		return runtime.ConstructResponse(request, runtime.NotFound, 0)
@@ -136,11 +141,19 @@ func load(request runtime.Request, fp *os.File) runtime.Response {
 		log.Printf("Hash: %d, Index: %d\n", hash, index)
 	}
 	if storeMetadata.size < index {
-		return runtime.ConstructResponse(request, runtime.NotFound, 0)
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			"Index outside of file",
+		)
 	}
 	decoded, err := resolveEntry(index, fp, request.GetKey())
 	if err != nil {
-		return runtime.ConstructResponse(request, runtime.ServerError, err.Error())
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			err.Error(),
+		)
 	}
 	if !decoded.IsSet {
 		return runtime.ConstructResponse(request, runtime.NotFound, 0)
@@ -161,11 +174,19 @@ func clear(request runtime.Request, fp *os.File) runtime.Response {
 		log.Printf("Hash: %d, Index: %d\n", hash, index)
 	}
 	if storeMetadata.size < index {
-		return runtime.ConstructResponse(request, runtime.Ok, 0)
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			"Index outside of file",
+		)
 	}
 	decoded, err := resolveEntry(index, fp, request.GetKey())
 	if err != nil {
-		return runtime.ConstructResponse(request, runtime.ServerError, err.Error())
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			err.Error(),
+		)
 	}
 	index = decoded.Index
 	fp.Seek(index, io.SeekStart)
@@ -178,9 +199,10 @@ func clear(request runtime.Request, fp *os.File) runtime.Response {
 }
 
 func clearAll(request runtime.Request, fp *os.File) runtime.Response {
-	fp.Truncate(entrySize)
-	storeMetadata.size = entrySize
-	storeMetadata.entrySpace = 0
+	minSize := minFileBytes()
+	fp.Truncate(minSize)
+	storeMetadata.size = minSize
+	storeMetadata.entrySpace = minEntrySpace
 	updateEntryBytes(fp, -storeMetadata.entries)
 	return runtime.ConstructResponse(request, runtime.Ok, 0)
 }
@@ -192,7 +214,11 @@ func keys(request runtime.Request, fp *os.File, i int) runtime.Response {
 	}
 	decoded, err := readEntry(index, fp)
 	if err != nil && err != io.EOF {
-		return runtime.ConstructResponse(request, runtime.ServerError, err.Error())
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			err.Error(),
+		)
 	}
 	if decoded.IsSet {
 		return runtime.ConstructResponse(request, runtime.Ok, decoded.Key)
@@ -207,7 +233,11 @@ func values(request runtime.Request, fp *os.File, i int) runtime.Response {
 	}
 	decoded, err := readEntry(index, fp)
 	if err != nil && err != io.EOF {
-		return runtime.ConstructResponse(request, runtime.ServerError, err.Error())
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			err.Error(),
+		)
 	}
 	if decoded.IsSet {
 		switch decoded.ValueType {
@@ -227,7 +257,11 @@ func items(request runtime.Request, fp *os.File, i int) runtime.Response {
 	}
 	decoded, err := readEntry(index, fp)
 	if err != nil && err != io.EOF {
-		return runtime.ConstructResponse(request, runtime.ServerError, err.Error())
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			err.Error(),
+		)
 	}
 	if decoded.IsSet {
 		var itemRow string
@@ -287,7 +321,11 @@ func readOperation(
 ) runtime.Response {
 	fp, err := getReadPointer()
 	if err != nil {
-		return runtime.ConstructResponse(request, runtime.ServerError, err.Error())
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			err.Error(),
+		)
 	}
 	defer fp.Close()
 	defer freeRLock()
@@ -300,7 +338,11 @@ func writeOperation(
 ) runtime.Response {
 	fp, err := getReadWritePointer()
 	if err != nil {
-		return runtime.ConstructResponse(request, runtime.ServerError, err.Error())
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			err.Error(),
+		)
 	}
 	defer fp.Close()
 	defer freeLock()
@@ -346,7 +388,11 @@ func streamReadOperation(
 	go func() {
 		fp, err := getReadPointer()
 		if err != nil {
-			out <- runtime.ConstructResponse(request, runtime.ServerError, err.Error())
+			out <- runtime.ConstructResponse(
+				request,
+				runtime.ServerError,
+				err.Error(),
+			)
 			return
 		}
 		defer fp.Close()

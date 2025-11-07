@@ -13,11 +13,13 @@ import (
 	"github.com/EnemigoPython/go-getit/src/types"
 )
 
-const entrySize int64 = 66     // number of bytes in file entry encoding
-const minEntrySpace int64 = 50 // default hash & file size limit
-const maxCollisions = 3        // maximum permitted collisions
-const streamBufferSize = 100   // size of stream channel
-const workerCount = 10         // number of workers for stream
+const entrySize int64 = 66            // number of bytes in file entry encoding
+const minEntrySpace int64 = 50        // default hash & file size limit
+const sizeUpThreshold float64 = 0.4   // % empty to trigger resize up
+const sizeDownThreshold float64 = 0.1 // % empty to trigger resize down
+const maxCollisions = 3               // maximum permitted collisions
+const streamBufferSize = 100          // size of stream channel
+const workerCount = 10                // number of workers for stream
 
 var notFoundFilter = []runtime.Status{runtime.NotFound}
 
@@ -54,20 +56,25 @@ func getReadWritePointer() (*os.File, error) {
 func freeLock()  { mutex.Unlock() }
 func freeRLock() { mutex.RUnlock() }
 
+// Returns size for metadata + min entry space
+func minFileBytes() int64 {
+	return (minEntrySpace * entrySize) + entrySize
+}
+
 func readMetaBytes(fp *os.File) int64 {
 	// read first 4 bytes to get number of entries
 	buf := make([]byte, 4)
 	_, err := fp.Read(buf)
 	if err != nil {
 		// new store; write empty metadata + min entry space
-		minSize := (minEntrySpace * entrySize) + entrySize
-		newMetaBytes := make([]byte, minSize)
+		newMetaBytes := make([]byte, minFileBytes())
 		fp.Write(newMetaBytes)
 	}
 	entries := int32(binary.BigEndian.Uint32(buf))
 	return int64(entries)
 }
 
+// Write an update to number of entries in file metadata
 func updateEntryBytes(fp *os.File, update int64) {
 	storeMetadata.entries += update
 	fp.Seek(0, io.SeekStart)

@@ -23,6 +23,8 @@ type Action byte
 
 const (
 	Store Action = iota
+	Add
+	Sub
 	Load
 	Clear
 	ClearAll
@@ -35,9 +37,18 @@ const (
 	Exit
 )
 
+type ArithmeticType int
+
+const (
+	A_Add ArithmeticType = iota
+	A_Sub
+)
+
 func (a Action) String() string {
 	return [...]string{
 		"Store",
+		"Add",
+		"Sub",
 		"Load",
 		"Clear",
 		"ClearAll",
@@ -54,6 +65,8 @@ func (a Action) String() string {
 func (a Action) ToLower() string {
 	return [...]string{
 		"store",
+		"add",
+		"sub",
 		"load",
 		"clear",
 		"clearall",
@@ -73,6 +86,10 @@ func parseAction(s string) (Action, error) {
 		return Action(0), RequestParseError{errorStr: "invalid action: <empty>"}
 	case Store.ToLower():
 		return Store, nil
+	case Add.ToLower():
+		return Add, nil
+	case Sub.ToLower():
+		return Sub, nil
 	case Load.ToLower():
 		return Load, nil
 	case Clear.ToLower():
@@ -120,6 +137,7 @@ type Request interface {
 	GetId() uint8
 	IsStream() bool
 	HasData() bool
+	ArithmeticOperation(ArithmeticType, int) (int, error)
 	EncodeRequest() []byte
 	EncodeFileBytes() []byte
 }
@@ -139,11 +157,37 @@ func (r request[T]) IsStream() bool {
 
 func (r request[T]) HasData() bool {
 	switch r.action {
-	case Store, Load, Keys, Values, Items, Count, Size, Space:
+	case
+		Store,
+		Add,
+		Sub,
+		Load,
+		Keys,
+		Values,
+		Items,
+		Count,
+		Size,
+		Space:
 		return true
 	default:
 		return false
 	}
+}
+
+// Perform arithmetic on the request where i is the current stored value
+func (r request[T]) ArithmeticOperation(a ArithmeticType, i int) (int, error) {
+	switch d := any(r.data).(type) {
+	case int:
+		switch a {
+		case A_Add:
+			return i + d, nil
+		case A_Sub:
+			return i - d, nil
+		}
+	case string:
+		return 0, RequestParseError{errorStr: "string is invalid data type"}
+	}
+	return 0, nil
 }
 
 func (r request[T]) writeKeyBytes(buf *bytes.Buffer, pad bool) {
@@ -159,21 +203,9 @@ func (r request[T]) writeKeyBytes(buf *bytes.Buffer, pad bool) {
 func (r request[T]) writeDataBytes(buf *bytes.Buffer, pad bool) {
 	switch d := any(r.data).(type) {
 	case int:
-		buf.WriteByte(byte(0)) // type of data: int
-		binary.Write(buf, binary.BigEndian, int32(d))
-		if pad {
-			paddedBytes := make([]byte, 28)
-			buf.Write(paddedBytes)
-		}
+		WriteIntBytes(buf, d, pad)
 	case string:
-		dataLen := len(d)
-		buf.WriteByte(byte(1))      // type of data: string
-		buf.WriteByte(byte(len(d))) // number of bytes
-		buf.Write([]byte(d))
-		if pad {
-			paddedBytes := make([]byte, maxStringLen-dataLen)
-			buf.Write(paddedBytes)
-		}
+		WriteStringBytes(buf, d, pad)
 	}
 }
 
@@ -181,7 +213,7 @@ func (r request[T]) EncodeRequest() []byte {
 	buf := new(bytes.Buffer)
 	buf.WriteByte(byte(r.action))
 	switch r.action {
-	case Store:
+	case Store, Add, Sub:
 		r.writeKeyBytes(buf, false)
 		r.writeDataBytes(buf, false)
 	case Load, Clear, Space:
@@ -203,7 +235,7 @@ func (r request[T]) EncodeFileBytes() []byte {
 func (r request[T]) String() string {
 	var body string
 	switch r.action {
-	case Store:
+	case Store, Add, Sub:
 		switch d := any(r.data).(type) {
 		case int:
 			body = fmt.Sprintf("%s[%s:%d]", r.action, r.key, d)
@@ -232,7 +264,7 @@ func ConstructRequest(args []string) (Request, error) {
 	}
 	var key string
 	var data string
-	switch action {
+	switch a := action; a {
 	case Store:
 		if len(args) < 3 {
 			return request[int]{}, RequestParseError{
@@ -243,7 +275,7 @@ func ConstructRequest(args []string) (Request, error) {
 		if len(key) > maxStringLen {
 			return request[int]{}, RequestParseError{
 				errorStr: fmt.Sprintf(
-					"Key must be less than %d characters",
+					"key must be less than %d characters",
 					maxStringLen,
 				),
 			}
@@ -264,12 +296,49 @@ func ConstructRequest(args []string) (Request, error) {
 		if len(data) > maxStringLen {
 			return request[int]{}, RequestParseError{
 				errorStr: fmt.Sprintf(
-					"Data must be less than %d characters",
+					"data must be less than %d characters",
 					maxStringLen,
 				),
 			}
 		}
 		return request[string]{key: key, data: data, action: action}, nil
+	case Add, Sub:
+		if len(args) < 3 {
+			return request[int]{}, RequestParseError{
+				errorStr: fmt.Sprintf(
+					"need 3 args for %s",
+					a.ToLower(),
+				),
+			}
+		}
+		key = args[1]
+		if len(key) > maxStringLen {
+			return request[int]{}, RequestParseError{
+				errorStr: fmt.Sprintf(
+					"key must be less than %d characters",
+					maxStringLen,
+				),
+			}
+		}
+		data = args[2]
+		if i, err := strconv.Atoi(data); err == nil {
+			if i < math.MinInt32 || i > math.MaxInt32 {
+				return request[int]{}, RequestParseError{
+					errorStr: fmt.Sprintf(
+						"invalid int data (must be %d-%d)",
+						math.MinInt32,
+						math.MaxInt32,
+					),
+				}
+			}
+			return request[int]{key: key, data: i, action: action}, nil
+		}
+		return request[int]{}, RequestParseError{
+			errorStr: fmt.Sprintf(
+				"data for %s must be an integer",
+				a.ToLower(),
+			),
+		}
 	case Load:
 		if len(args) < 1 {
 			return request[int]{}, RequestParseError{
@@ -335,7 +404,7 @@ func decodeStringData(b []byte) string {
 func DecodeRequest(b []byte) Request {
 	action := Action(b[0])
 	switch action {
-	case Store:
+	case Store, Add, Sub:
 		key := decodeKey(b)
 		offset := len(key) + 2
 		if b[offset] == 0 {

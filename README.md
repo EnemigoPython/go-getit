@@ -11,6 +11,8 @@ To get started run the binary with the flag `-runtime=server` to create a server
 ### Client
 - `store X Y` to store value Y in X (value can be a string or 32 bit number, strings are limited to 31 ASCII chars) -> returns `1` if new entry or `0` if data overwritten
 - `load X` to get value associated with key X (or empty return if not found)
+- `add X Y` to add Y to the value of X -> returns new value, or empty return if not found, or invalid request error if X is a string
+- `sub X Y` to subtract Y from the value of X -> returns new value, or empty return if not found, or invalid request error if X is a string
 - `clear {X}` to delete key X (or omit to clear all) -> returns `0` if success or empty if not found
 - `keys` streams all keys set in the store
 - `values` streams all values set in the store

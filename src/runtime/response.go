@@ -16,15 +16,28 @@ const (
 	Ok Status = iota
 	NotFound
 	StreamDone
+	InvalidRequest
 	ServerError
 )
 
 func (s Status) String() string {
-	return [...]string{"Ok", "NotFound", "StreamDone", "ServerError"}[s]
+	return [...]string{
+		"Ok",
+		"NotFound",
+		"StreamDone",
+		"InvalidRequest",
+		"ServerError",
+	}[s]
 }
 
 func (s Status) ToLower() string {
-	return [...]string{"ok", "notfound", "streamdone", "servererror"}[s]
+	return [...]string{
+		"ok",
+		"notfound",
+		"streamdone",
+		"invalidrequest",
+		"servererror",
+	}[s]
 }
 
 type response[T types.IntOrString] struct {
@@ -50,12 +63,15 @@ func (r response[T]) StreamDone() bool {
 
 func (r response[T]) String() string {
 	var body string
-	if r.hasData && (r.status == Ok || r.status == ServerError) {
+	statusWithMessage := (r.status == Ok ||
+		r.status == InvalidRequest ||
+		r.status == ServerError)
+	if r.hasData && statusWithMessage {
 		switch d := any(r.data).(type) {
 		case int:
 			body = fmt.Sprintf("%s,%d", r.status, d)
 		case string:
-			body = fmt.Sprintf("%s,%s", r.status, d)
+			body = fmt.Sprintf("%s,'%s'", r.status, d)
 		}
 	} else {
 		body = r.status.String()
@@ -66,7 +82,8 @@ func (r response[T]) String() string {
 func (r response[T]) EncodeResponse() []byte {
 	buf := new(bytes.Buffer)
 	buf.WriteByte(byte(r.status))
-	if r.status != Ok || !r.hasData {
+	statusWithPayload := r.status == Ok || r.status == InvalidRequest
+	if !statusWithPayload || !r.hasData {
 		return buf.Bytes()
 	}
 	switch d := any(r.data).(type) {
@@ -81,11 +98,13 @@ func (r response[T]) EncodeResponse() []byte {
 }
 
 func (r response[T]) DataPayload() string {
-	if r.status == ServerError {
-		log.Fatal("Server error")
-	}
-	if r.status == NotFound {
+	switch r.status {
+	case NotFound:
 		return "" // impossible value
+	case InvalidRequest:
+		log.Fatal(r.data)
+	case ServerError:
+		log.Fatal("Server error")
 	}
 	switch d := any(r.data).(type) {
 	case int:
@@ -122,7 +141,8 @@ func ConstructResponse[T types.IntOrString](request Request, status Status, data
 
 func DecodeResponse(b []byte) Response {
 	status := Status(b[0])
-	if status != Ok || len(b) < 2 {
+	statusWithPayload := status == Ok || status == InvalidRequest
+	if !statusWithPayload || len(b) < 2 {
 		return response[int]{status: status, hasData: false}
 	}
 	if b[1] == 0 {

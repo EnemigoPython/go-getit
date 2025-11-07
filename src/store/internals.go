@@ -1,6 +1,7 @@
 package store
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/EnemigoPython/go-getit/src/runtime"
+	"github.com/EnemigoPython/go-getit/src/types"
 )
 
 const entrySize int64 = 66       // number of bytes in file entry encoding
@@ -177,4 +179,20 @@ func resolveEntry(index int64, fp *os.File, key string) (decodedEntry, error) {
 	}
 	log.Printf("Error; maximum search depth exceeded at %d for %s\n", index, key)
 	return decodedEntry{}, DecodeFileError{errorStr: "Maximum search depth"}
+}
+
+// Overwrite the data record of an entry without modifying other bits
+//
+// Assumes the key has already been checked against the file index
+func overwriteData[T types.IntOrString](index int64, fp *os.File, data T) {
+	// seek to data section of index
+	fp.Seek(index+int64(33), io.SeekStart)
+	buf := new(bytes.Buffer)
+	switch d := any(data).(type) {
+	case int:
+		runtime.WriteIntBytes(buf, d, true)
+	case string:
+		runtime.WriteStringBytes(buf, d, true)
+	}
+	fp.Write(buf.Bytes())
 }

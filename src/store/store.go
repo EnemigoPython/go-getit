@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"os"
 	"slices"
 	"sync"
@@ -63,6 +64,69 @@ func store(request runtime.Request, fp *os.File) runtime.Response {
 	storeMetadata.size += entrySize
 	storeMetadata.entrySpace++
 	return runtime.ConstructResponse(request, runtime.Ok, code)
+}
+
+func arithmeticOperation(
+	request runtime.Request,
+	fp *os.File,
+	a runtime.ArithmeticType,
+) runtime.Response {
+	hash := hashKey(request.GetKey())
+	index := entryIndex(hash)
+	if runtime.Config.Debug {
+		log.Printf("Hash: %d, Index: %d\n", hash, index)
+	}
+	if storeMetadata.size < index {
+		return runtime.ConstructResponse(request, runtime.NotFound, 0)
+	}
+	decoded, err := resolveEntry(index, fp, request.GetKey())
+	if err != nil {
+		return runtime.ConstructResponse(request, runtime.ServerError, err.Error())
+	}
+	if !decoded.IsSet {
+		return runtime.ConstructResponse(request, runtime.NotFound, 0)
+	}
+	switch decoded.ValueType {
+	case typeInt:
+		calculatedVal, err := request.ArithmeticOperation(a, decoded.Int)
+		if err != nil {
+			return runtime.ConstructResponse(
+				request,
+				runtime.ServerError,
+				err.Error(),
+			)
+		}
+		if calculatedVal < math.MinInt32 || calculatedVal > math.MaxInt32 {
+			return runtime.ConstructResponse(
+				request,
+				runtime.InvalidRequest,
+				"Operation causes overflow or underflow",
+			)
+		}
+		overwriteData(index, fp, calculatedVal)
+		return runtime.ConstructResponse(request, runtime.Ok, calculatedVal)
+	case typeString:
+		var errorMessage string
+		if a == runtime.A_Add {
+			errorMessage = "Cannot add to string"
+		} else {
+			errorMessage = "Cannot subtract from string"
+		}
+		return runtime.ConstructResponse(
+			request,
+			runtime.InvalidRequest,
+			errorMessage,
+		)
+	}
+	panic("Unreachable")
+}
+
+func add(request runtime.Request, fp *os.File) runtime.Response {
+	return arithmeticOperation(request, fp, runtime.A_Add)
+}
+
+func sub(request runtime.Request, fp *os.File) runtime.Response {
+	return arithmeticOperation(request, fp, runtime.A_Sub)
 }
 
 func load(request runtime.Request, fp *os.File) runtime.Response {
@@ -253,6 +317,10 @@ func ProcessRequest(request runtime.Request) runtime.Response {
 	switch request.GetAction() {
 	case runtime.Store:
 		return writeOperation(store, request)
+	case runtime.Add:
+		return writeOperation(add, request)
+	case runtime.Sub:
+		return writeOperation(sub, request)
 	case runtime.Load:
 		return readOperation(load, request)
 	case runtime.Clear:

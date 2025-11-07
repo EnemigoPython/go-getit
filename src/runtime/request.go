@@ -379,11 +379,9 @@ func ConstructRequest(args []string) (Request, error) {
 			return request[int]{key: "current", action: action}, nil
 		case "e", "empty":
 			return request[int]{key: "empty", action: action}, nil
-		case "m", "max", "maximum":
-			return request[int]{key: "max", action: action}, nil
 		default:
 			return request[int]{}, RequestParseError{
-				"Space verb must be 'current', 'empty', or 'max",
+				"Space verb must be 'current' or 'empty'",
 			}
 		}
 	default:

@@ -13,18 +13,18 @@ import (
 	"github.com/EnemigoPython/go-getit/src/types"
 )
 
-const entrySize int64 = 66       // number of bytes in file entry encoding
-const maxEntrySpace int64 = 5000 // hash & file size limit
-const maxCollisions = 3          // maximum permitted collisions
-const streamBufferSize = 100     // size of stream channel
-const workerCount = 10           // number of workers for stream
+const entrySize int64 = 66     // number of bytes in file entry encoding
+const minEntrySpace int64 = 50 // default hash & file size limit
+const maxCollisions = 3        // maximum permitted collisions
+const streamBufferSize = 100   // size of stream channel
+const workerCount = 10         // number of workers for stream
 
 var notFoundFilter = []runtime.Status{runtime.NotFound}
 
 type _storeMetadata struct {
-	size       int64
-	entrySpace int64
-	entries    int64
+	size       int64 // size in bytes
+	entrySpace int64 // current entry space
+	entries    int64 // number of entries
 }
 
 var storeMetadata _storeMetadata
@@ -59,8 +59,9 @@ func readMetaBytes(fp *os.File) int64 {
 	buf := make([]byte, 4)
 	_, err := fp.Read(buf)
 	if err != nil {
-		// new store; write empty metadata
-		newMetaBytes := make([]byte, entrySize)
+		// new store; write empty metadata + min entry space
+		minSize := (minEntrySpace * entrySize) + entrySize
+		newMetaBytes := make([]byte, minSize)
 		fp.Write(newMetaBytes)
 	}
 	entries := int32(binary.BigEndian.Uint32(buf))
@@ -83,7 +84,7 @@ func hashKey(key string) int64 {
 	for _, r := range key {
 		hash = ((hash << 5) + hash) + uint64(r)
 	}
-	return (int64(hash) % maxEntrySpace) + 1
+	return (int64(hash) % storeMetadata.entrySpace) + 1
 }
 
 type DecodeFileError struct {

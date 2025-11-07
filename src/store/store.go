@@ -273,12 +273,6 @@ func space(request runtime.Request) runtime.Response {
 			runtime.Ok,
 			int(emptyEntries),
 		)
-	case "max":
-		return runtime.ConstructResponse(
-			request,
-			runtime.Ok,
-			int(maxEntrySpace),
-		)
 	}
 	return runtime.ConstructResponse(request, runtime.ServerError, "Bad Verb")
 }

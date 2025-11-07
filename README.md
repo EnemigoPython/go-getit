@@ -19,7 +19,7 @@ To get started run the binary with the flag `-runtime=server` to create a server
 - `items` streams all keys & values in the store (space separated)
 - `count` to get number of entries in the store
 - `size` to get size of file in bytes
-- `space {current/empty/max}` to get maximum number of entries possible in current file size -> empty gets unused entry space, max gets maximum possible, default current
+- `space {current/empty}` to get maximum number of entries possible in current file size -> empty gets unused entry space, default current
 - `exit` shuts down the server
 
 ### Config Flags

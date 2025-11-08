@@ -197,7 +197,6 @@ func clear(request runtime.Request, fp *os.File) runtime.Response {
 		updateEntryBytes(fp, -1)
 		go checkResize()
 		return runtime.ConstructResponse(request, runtime.Ok, 0)
-
 	}
 	return runtime.ConstructResponse(request, runtime.NotFound, 0)
 }
@@ -207,6 +206,10 @@ func clearAll(request runtime.Request, fp *os.File) runtime.Response {
 	fp.Truncate(minSize)
 	storeMetadata.size = minSize
 	storeMetadata.tableSpace = minTableSpace
+	// format remaining table space
+	formatLen := minSize - entrySize
+	buf := make([]byte, formatLen)
+	fp.WriteAt(buf, entrySize)
 	updateEntryBytes(fp, -storeMetadata.entries)
 	return runtime.ConstructResponse(request, runtime.Ok, 0)
 }

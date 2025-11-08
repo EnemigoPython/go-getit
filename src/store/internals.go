@@ -16,7 +16,7 @@ import (
 
 const entrySize int64 = 66             // number of bytes in file entry encoding
 const minTableSpace int64 = 50         // default hash & file size limit
-const sizeUpThreshold float64 = 0.4    // % empty to trigger resize up
+const sizeUpThreshold float64 = 0.4    // % full to trigger resize up
 const sizeDownThreshold float64 = 0.05 // % empty to trigger resize down
 const streamBufferSize = 100           // size of stream channel
 const workerCount = 10                 // number of workers for stream
@@ -24,9 +24,10 @@ const workerCount = 10                 // number of workers for stream
 var notFoundFilter = []runtime.Status{runtime.NotFound}
 
 type _storeMetadata struct {
-	size       int64 // size in bytes
-	tableSpace int64 // current table space
-	entries    int64 // number of entries
+	size       int64   // size in bytes
+	tableSpace int64   // current table space
+	entries    int64   // number of entries
+	setRatio   float64 // ratio of entries set in table
 }
 
 var storeMetadata _storeMetadata
@@ -76,13 +77,13 @@ func readMetaBytes(fp *os.File) int64 {
 
 // Check size ratio against resize parameters; initiate resize if needed
 func checkResize() {
+	storeMetadata.setRatio = float64(storeMetadata.entries) /
+		float64(storeMetadata.tableSpace)
 	var target int
-	if float64(storeMetadata.entries)/float64(storeMetadata.tableSpace) >
-		sizeUpThreshold {
+	if storeMetadata.setRatio > sizeUpThreshold {
 		target = int(storeMetadata.tableSpace * 2)
-	}
-	if float64(storeMetadata.entries)/float64(storeMetadata.tableSpace) <
-		sizeDownThreshold && storeMetadata.size > minFileBytes() {
+	} else if storeMetadata.setRatio < sizeDownThreshold &&
+		storeMetadata.size > minFileBytes() {
 		target = int(storeMetadata.tableSpace / 2)
 	}
 	if target == 0 {

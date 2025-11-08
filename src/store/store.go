@@ -21,11 +21,14 @@ func OpenStore() error {
 	defer file.Close()
 	entries := readMetaBytes(file)
 	info, _ := os.Stat(filePath)
-	fileSize := info.Size()
+	fileSize := int64(info.Size())
+	tableSpace := (fileSize / entrySize) - 1
+	setRatio := float64(entries) / float64(tableSpace)
 	storeMetadata = _storeMetadata{
-		size:       int64(fileSize),
-		tableSpace: (int64(fileSize) / entrySize) - 1,
+		size:       fileSize,
+		tableSpace: tableSpace,
 		entries:    entries,
+		setRatio:   setRatio,
 	}
 	log.Printf("Using store '%s'\n", filePath)
 	return nil

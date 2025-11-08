@@ -315,6 +315,7 @@ func ConstructRequest(args []string, internal bool) (Request, error) {
 				data:     i,
 				action:   action,
 				internal: internal,
+				id:       generateId(),
 			}, nil
 		}
 		if len(data) > maxStringLen {
@@ -330,6 +331,7 @@ func ConstructRequest(args []string, internal bool) (Request, error) {
 			data:     data,
 			action:   action,
 			internal: internal,
+			id:       generateId(),
 		}, nil
 	case Resize:
 		if len(args) < 1 {
@@ -352,6 +354,7 @@ func ConstructRequest(args []string, internal bool) (Request, error) {
 				data:     i,
 				action:   action,
 				internal: internal,
+				id:       generateId(),
 			}, nil
 		}
 		return request[int]{}, RequestParseError{
@@ -391,6 +394,7 @@ func ConstructRequest(args []string, internal bool) (Request, error) {
 				data:     i,
 				action:   action,
 				internal: internal,
+				id:       generateId(),
 			}, nil
 		}
 		return request[int]{}, RequestParseError{
@@ -418,6 +422,7 @@ func ConstructRequest(args []string, internal bool) (Request, error) {
 			key:      key,
 			action:   action,
 			internal: internal,
+			id:       generateId(),
 		}, nil
 	case Clear:
 		if len(args) < 2 {
@@ -439,6 +444,7 @@ func ConstructRequest(args []string, internal bool) (Request, error) {
 				key:      "current",
 				action:   action,
 				internal: internal,
+				id:       generateId(),
 			}, nil
 		}
 		key = args[1]
@@ -448,12 +454,14 @@ func ConstructRequest(args []string, internal bool) (Request, error) {
 				key:      "current",
 				action:   action,
 				internal: internal,
+				id:       generateId(),
 			}, nil
 		case "e", "empty":
 			return request[int]{
 				key:      "empty",
 				action:   action,
 				internal: internal,
+				id:       generateId(),
 			}, nil
 		default:
 			return request[int]{}, RequestParseError{
@@ -461,7 +469,11 @@ func ConstructRequest(args []string, internal bool) (Request, error) {
 			}
 		}
 	default:
-		return request[int]{action: action, internal: internal}, nil
+		return request[int]{
+			action:   action,
+			internal: internal,
+			id:       generateId(),
+		}, nil
 	}
 }
 

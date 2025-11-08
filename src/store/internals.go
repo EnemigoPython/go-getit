@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strconv"
 	"sync"
 
 	"github.com/EnemigoPython/go-getit/src/runtime"
@@ -75,18 +76,24 @@ func readMetaBytes(fp *os.File) int64 {
 
 // Check size ratio against resize parameters; initiate resize if needed
 func checkResize() {
-	x := []string{"resize", "20"}
-	request, _ := runtime.ConstructRequest(x, true)
-	fmt.Println(request)
-	log.Println(float64(storeMetadata.entries) / float64(storeMetadata.tableSpace))
+	var target int
 	if float64(storeMetadata.entries)/float64(storeMetadata.tableSpace) >
 		sizeUpThreshold {
-		// target := storeMetadata.entrySpace * 2
+		target = int(storeMetadata.tableSpace * 2)
 	}
 	if float64(storeMetadata.entries)/float64(storeMetadata.tableSpace) <
 		sizeDownThreshold && storeMetadata.size > minFileBytes() {
-		// target := storeMetadata.entrySpace / 2
+		target = int(storeMetadata.tableSpace / 2)
 	}
+	if target == 0 {
+		return
+	}
+	strTarget := strconv.Itoa(target)
+	requestArgs := []string{"resize", strTarget}
+	request, _ := runtime.ConstructRequest(requestArgs, true)
+	log.Println(request)
+	response := ProcessRequest(request)
+	log.Println(response)
 }
 
 // Write an update to number of entries in file metadata

@@ -116,7 +116,7 @@ func (r response[T]) DataPayload() string {
 }
 
 func ConstructResponse[T types.IntOrString](request Request, status Status, data T) Response {
-	hasData := request.HasData()
+	hasData := request.HasData() || status == InvalidRequest
 	isStream := request.IsStream()
 	switch v := any(data).(type) {
 	case int:

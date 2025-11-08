@@ -288,6 +288,23 @@ func items(request runtime.Request, fp *os.File, i int) runtime.Response {
 }
 
 func resize(request runtime.Request, fp *os.File) runtime.Response {
+	newTableSpace, err := request.GetIntData()
+	if err != nil {
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			err.Error(),
+		)
+	}
+	newSetRatio := float64(storeMetadata.entries) / float64(newTableSpace)
+	// lenience on size down as it will only be applied when clearing keys
+	if newSetRatio > sizeUpThreshold {
+		return runtime.ConstructResponse(
+			request,
+			runtime.InvalidRequest,
+			"Resize outside acceptable threshold",
+		)
+	}
 	return runtime.ConstructResponse(
 		request,
 		runtime.Ok,

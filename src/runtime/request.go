@@ -141,6 +141,8 @@ type Request interface {
 	GetAction() Action
 	GetKey() string
 	GetId() uint8
+	GetIntData() (int, error)
+	GetStringData() (string, error)
 	IsStream() bool
 	HasData() bool
 	ArithmeticOperation(ArithmeticType, int) (int, error)
@@ -151,6 +153,26 @@ type Request interface {
 func (r request[T]) GetAction() Action { return r.action }
 func (r request[T]) GetKey() string    { return r.key }
 func (r request[T]) GetId() uint8      { return r.id }
+
+func (r request[T]) GetIntData() (int, error) {
+	switch d := any(r.data).(type) {
+	case int:
+		return d, nil
+	case string:
+		return 0, RequestParseError{errorStr: "Wrong data payload"}
+	}
+	panic("Unreachable")
+}
+
+func (r request[T]) GetStringData() (string, error) {
+	switch d := any(r.data).(type) {
+	case string:
+		return d, nil
+	case int:
+		return "", RequestParseError{errorStr: "Wrong data payload"}
+	}
+	panic("Unreachable")
+}
 
 func (r request[T]) IsStream() bool {
 	switch r.action {

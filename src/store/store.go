@@ -19,7 +19,8 @@ func OpenStore() error {
 		return err
 	}
 	defer file.Close()
-	entries := readMetaBytes(file)
+	minSize := (minTableSpace * entrySize) + entrySize
+	entries := readMetaBytes(file, minSize)
 	info, _ := os.Stat(filePath)
 	fileSize := int64(info.Size())
 	tableSpace := (fileSize / entrySize) - 1
@@ -29,8 +30,9 @@ func OpenStore() error {
 		tableSpace: tableSpace,
 		entries:    entries,
 		setRatio:   setRatio,
+		minSize:    minSize,
 	}
-	log.Printf("Using store '%s'\n", filePath)
+	log.Printf("Using store '%s': %+v\n", filePath, storeMetadata)
 	return nil
 }
 
@@ -205,12 +207,11 @@ func clear(request runtime.Request, fp *os.File) runtime.Response {
 }
 
 func clearAll(request runtime.Request, fp *os.File) runtime.Response {
-	minSize := minFileBytes()
-	fp.Truncate(minSize)
-	storeMetadata.size = minSize
+	fp.Truncate(storeMetadata.minSize)
+	storeMetadata.size = storeMetadata.minSize
 	storeMetadata.tableSpace = minTableSpace
 	// format remaining table space
-	formatLen := minSize - entrySize
+	formatLen := storeMetadata.minSize - entrySize
 	buf := make([]byte, formatLen)
 	fp.WriteAt(buf, entrySize)
 	updateEntryBytes(fp, -storeMetadata.entries)

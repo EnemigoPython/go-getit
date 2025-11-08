@@ -28,6 +28,7 @@ type _storeMetadata struct {
 	tableSpace int64   // current table space
 	entries    int64   // number of entries
 	setRatio   float64 // ratio of entries set in table
+	minSize    int64   // memoized minimum file size in bytes
 }
 
 var storeMetadata _storeMetadata
@@ -57,18 +58,13 @@ func getReadWritePointer() (*os.File, error) {
 func freeLock()  { mutex.Unlock() }
 func freeRLock() { mutex.RUnlock() }
 
-// Returns size for metadata + min table space
-func minFileBytes() int64 {
-	return (minTableSpace * entrySize) + entrySize
-}
-
-func readMetaBytes(fp *os.File) int64 {
+func readMetaBytes(fp *os.File, minSize int64) int64 {
 	// read first 4 bytes to get number of entries
 	buf := make([]byte, 4)
 	_, err := fp.Read(buf)
 	if err != nil {
 		// new store; write empty metadata + min table space
-		newMetaBytes := make([]byte, minFileBytes())
+		newMetaBytes := make([]byte, minSize)
 		fp.Write(newMetaBytes)
 	}
 	entries := int32(binary.BigEndian.Uint32(buf))
@@ -83,7 +79,7 @@ func checkResize() {
 	if storeMetadata.setRatio > sizeUpThreshold {
 		target = int(storeMetadata.tableSpace * 2)
 	} else if storeMetadata.setRatio < sizeDownThreshold &&
-		storeMetadata.size > minFileBytes() {
+		storeMetadata.size > storeMetadata.minSize {
 		target = int(storeMetadata.tableSpace / 2)
 	}
 	if target == 0 {

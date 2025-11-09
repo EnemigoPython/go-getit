@@ -286,7 +286,16 @@ func items(request runtime.Request, fp *os.File, i int) runtime.Response {
 	return runtime.ConstructResponse(request, runtime.NotFound, 0)
 }
 
-func resize(request runtime.Request, fp *os.File) runtime.Response {
+func resize(request runtime.Request) runtime.Response {
+	// we will free the read pointer manually
+	fp, err := getReadPointer()
+	if err != nil {
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			err.Error(),
+		)
+	}
 	newTableSpace, err := request.GetIntData()
 	if err != nil {
 		return runtime.ConstructResponse(
@@ -317,8 +326,22 @@ func resize(request runtime.Request, fp *os.File) runtime.Response {
 	defer temp_fp.Close()
 	newFileSize := (int64(newTableSpace) * entrySize) + entrySize
 	// format in case an artifact already existed
-	temp_fp.Truncate(0)
-	temp_fp.Truncate(newFileSize)
+	err = temp_fp.Truncate(0)
+	if err != nil {
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			err.Error(),
+		)
+	}
+	err = temp_fp.Truncate(newFileSize)
+	if err != nil {
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			err.Error(),
+		)
+	}
 	// write current entries to new file metadata
 	updateEntryBytes(temp_fp, storeMetadata.entries)
 
@@ -326,7 +349,6 @@ func resize(request runtime.Request, fp *os.File) runtime.Response {
 	resChannel := make(chan runtime.Response)
 	var wg sync.WaitGroup
 	var tempMutex sync.Mutex
-	defer close(resChannel)
 	go func() {
 		defer close(nextIndex)
 		for i := entrySize; i < storeMetadata.size; i += entrySize {
@@ -376,7 +398,29 @@ func resize(request runtime.Request, fp *os.File) runtime.Response {
 	response := <-resChannel
 	// if no errors, replace with new file
 	if response.GetStatus() == runtime.Ok {
-		os.Rename(runtime.Config.TempPath, runtime.Config.StoreName)
+		// close all file pointers & acquire write lock to rename
+		info, erra := temp_fp.Stat()
+		if erra != nil {
+			panic(erra)
+		}
+		fmt.Println("Size:", info.Size(), "Expected:", newFileSize)
+		temp_fp.Close()
+		fp.Close()
+		freeRLock()
+		acquireLock()
+		defer freeLock()
+		err := os.Rename(runtime.Config.TempPath, runtime.Config.StoreName)
+		if err != nil {
+			return runtime.ConstructResponse(
+				request,
+				runtime.ServerError,
+				err.Error(),
+			)
+		}
+		testFp, _ := os.Open(runtime.Config.StorePath)
+		info, _ = testFp.Stat()
+		fmt.Println("AFTER RENAME SIZE:", info.Size())
+		testFp.Close()
 		storeMetadata.size = newFileSize
 		storeMetadata.tableSpace = int64(newTableSpace)
 		storeMetadata.setRatio = newSetRatio
@@ -473,7 +517,7 @@ func ProcessRequest(request runtime.Request) runtime.Response {
 		return writeOperation(clearAll, request)
 	case runtime.Resize:
 		// uses a temp file so no need to block readers
-		return readOperation(resize, request)
+		return resize(request)
 	case runtime.Count:
 		return count(request)
 	case runtime.Size:

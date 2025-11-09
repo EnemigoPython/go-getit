@@ -55,8 +55,9 @@ func getReadWritePointer() (*os.File, error) {
 	return fp, nil
 }
 
-func freeLock()  { mutex.Unlock() }
-func freeRLock() { mutex.RUnlock() }
+func acquireLock() { mutex.Lock() }
+func freeLock()    { mutex.Unlock() }
+func freeRLock()   { mutex.RUnlock() }
 
 func readMetaBytes(fp *os.File, minSize int64) int64 {
 	// read first 4 bytes to get number of entries
@@ -177,11 +178,11 @@ func decodeFileBytes(b []byte) (decodedEntry, error) {
 func readEntry(index int64, fp *os.File, debugLog bool) (decodedEntry, error) {
 	buf := make([]byte, entrySize)
 	n, err := fp.ReadAt(buf, index)
-	if runtime.Config.Debug && debugLog {
-		log.Printf("Entry bytes: % x\n", buf)
-	}
 	if err != nil {
 		return decodedEntry{}, err
+	}
+	if runtime.Config.Debug && debugLog {
+		log.Printf("Entry bytes: % x\n", buf)
 	}
 	if n < int(entrySize) {
 		return decodedEntry{}, DecodeFileError{errorStr: "Insufficient bytes"}
@@ -201,6 +202,7 @@ func resolveEntry(index int64, fp *os.File, key string) (decodedEntry, error) {
 	for range maxPermittedCollisions {
 		decoded, err := readEntry(index, fp, true)
 		if err != nil {
+			fmt.Println(err.Error())
 			if err == io.EOF {
 				// wrap around if needed
 				index = entrySize

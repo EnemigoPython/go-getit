@@ -325,32 +325,22 @@ func resize(request runtime.Request) runtime.Response {
 	}
 	defer temp_fp.Close()
 	newFileSize := (int64(newTableSpace) * entrySize) + entrySize
+
 	// format in case an artifact already existed
-	err = temp_fp.Truncate(0)
-	if err != nil {
-		return runtime.ConstructResponse(
-			request,
-			runtime.ServerError,
-			err.Error(),
-		)
-	}
-	err = temp_fp.Truncate(newFileSize)
-	if err != nil {
-		return runtime.ConstructResponse(
-			request,
-			runtime.ServerError,
-			err.Error(),
-		)
-	}
+	temp_fp.Truncate(0)
+	temp_fp.Truncate(newFileSize)
+
 	// write current entries to new file metadata
 	updateEntryBytes(temp_fp, storeMetadata.entries)
 
 	nextIndex := make(chan int64)
-	resChannel := make(chan runtime.Response)
+	resChannel := make(chan runtime.Response, 1)
+
 	var wg sync.WaitGroup
 	var tempMutex sync.Mutex
 	go func() {
 		defer close(nextIndex)
+		// scan table for set entries
 		for i := entrySize; i < storeMetadata.size; i += entrySize {
 			nextIndex <- i
 		}
@@ -369,9 +359,19 @@ func resize(request runtime.Request) runtime.Response {
 				if !decodedEntry.IsSet {
 					continue
 				}
+				// rehash key
 				newHash := hashKey(decodedEntry.Key, int64(newTableSpace))
 				newIndex := entryIndex(newHash)
-				fmt.Println(decodedEntry.Key, newHash, newIndex)
+				if runtime.Config.Debug {
+					log.Printf(
+						"Key '%s' (index %d)->(hash %d, index %d)",
+						decodedEntry.Key,
+						index,
+						newHash,
+						newIndex,
+					)
+				}
+				// lock temp file & write to new index
 				tempMutex.Lock()
 				newDecodedEntry, err := resolveEntry(
 					newIndex,
@@ -386,7 +386,7 @@ func resize(request runtime.Request) runtime.Response {
 					)
 				}
 				newIndex = newDecodedEntry.Index
-				temp_fp.WriteAt(request.EncodeFileBytes(), newIndex)
+				temp_fp.WriteAt(decodedEntry.toBytes(), newIndex)
 				tempMutex.Unlock()
 			}
 		})
@@ -399,17 +399,12 @@ func resize(request runtime.Request) runtime.Response {
 	// if no errors, replace with new file
 	if response.GetStatus() == runtime.Ok {
 		// close all file pointers & acquire write lock to rename
-		info, erra := temp_fp.Stat()
-		if erra != nil {
-			panic(erra)
-		}
-		fmt.Println("Size:", info.Size(), "Expected:", newFileSize)
 		temp_fp.Close()
 		fp.Close()
 		freeRLock()
 		acquireLock()
 		defer freeLock()
-		err := os.Rename(runtime.Config.TempPath, runtime.Config.StoreName)
+		err = os.Rename(runtime.Config.TempPath, runtime.Config.StorePath)
 		if err != nil {
 			return runtime.ConstructResponse(
 				request,
@@ -417,10 +412,6 @@ func resize(request runtime.Request) runtime.Response {
 				err.Error(),
 			)
 		}
-		testFp, _ := os.Open(runtime.Config.StorePath)
-		info, _ = testFp.Stat()
-		fmt.Println("AFTER RENAME SIZE:", info.Size())
-		testFp.Close()
 		storeMetadata.size = newFileSize
 		storeMetadata.tableSpace = int64(newTableSpace)
 		storeMetadata.setRatio = newSetRatio

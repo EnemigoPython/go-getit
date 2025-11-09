@@ -148,6 +148,20 @@ type decodedEntry struct {
 	Index     int64
 }
 
+// Turn the entry back into encoded bytes
+func (d decodedEntry) toBytes() []byte {
+	buf := new(bytes.Buffer)
+	buf.WriteByte(1)
+	runtime.WriteKeyBytes(buf, d.Key, true)
+	switch d.ValueType {
+	case typeInt:
+		runtime.WriteIntBytes(buf, d.Int, true)
+	case typeString:
+		runtime.WriteStringBytes(buf, d.Str, true)
+	}
+	return buf.Bytes()
+}
+
 func decodeFileBytes(b []byte) (decodedEntry, error) {
 	if b[0] == 0 {
 		return decodedEntry{IsSet: false}, nil

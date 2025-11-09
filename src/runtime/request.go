@@ -219,13 +219,7 @@ func (r request[T]) ArithmeticOperation(a ArithmeticType, i int) (int, error) {
 }
 
 func (r request[T]) writeKeyBytes(buf *bytes.Buffer, pad bool) {
-	keyLen := len(r.key)
-	buf.WriteByte(byte(keyLen)) // number of bytes
-	buf.Write([]byte(r.key))
-	if pad {
-		paddedBytes := make([]byte, maxStringLen-keyLen)
-		buf.Write(paddedBytes)
-	}
+	WriteKeyBytes(buf, r.key, pad)
 }
 
 func (r request[T]) writeDataBytes(buf *bytes.Buffer, pad bool) {

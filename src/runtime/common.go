@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 )
 
-// Write encoded bytes for an entry key
+// Write encoded bytes for an entry key with optional padding
 func WriteKeyBytes(buf *bytes.Buffer, key string, pad bool) {
 	keyLen := len(key)
 	buf.WriteByte(byte(keyLen)) // number of bytes

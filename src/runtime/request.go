@@ -356,7 +356,7 @@ func ConstructRequest(args []string, internal bool) (Request, error) {
 			id:       generateId(),
 		}, nil
 	case Resize:
-		if len(args) < 1 {
+		if len(args) < 2 {
 			return request[int]{}, RequestParseError{
 				errorStr: "need 2 args for resize",
 			}

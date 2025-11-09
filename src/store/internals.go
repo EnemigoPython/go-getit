@@ -72,19 +72,29 @@ func readMetaBytes(fp *os.File, minSize int64) int64 {
 }
 
 // Check size ratio against resize parameters; initiate resize if needed
-func checkResize() {
+func checkResizeUp() {
 	storeMetadata.setRatio = float64(storeMetadata.entries) /
 		float64(storeMetadata.tableSpace)
-	var target int
-	if storeMetadata.setRatio > sizeUpThreshold {
-		target = int(storeMetadata.tableSpace * 2)
-	} else if storeMetadata.setRatio < sizeDownThreshold &&
-		storeMetadata.size > storeMetadata.minSize {
-		target = int(storeMetadata.tableSpace / 2)
-	}
-	if target == 0 {
+	if storeMetadata.setRatio <= sizeUpThreshold {
 		return
 	}
+	target := int(storeMetadata.tableSpace * 2)
+	strTarget := strconv.Itoa(target)
+	requestArgs := []string{"resize", strTarget}
+	request, _ := runtime.ConstructRequest(requestArgs, true)
+	log.Println(request)
+	response := ProcessRequest(request)
+	log.Println(response)
+}
+
+// Check size ratio against resize parameters; initiate resize if needed
+func checkResizeDown() {
+	storeMetadata.setRatio = float64(storeMetadata.entries) /
+		float64(storeMetadata.tableSpace)
+	if storeMetadata.setRatio >= sizeDownThreshold {
+		return
+	}
+	target := int(storeMetadata.tableSpace * 2)
 	strTarget := strconv.Itoa(target)
 	requestArgs := []string{"resize", strTarget}
 	request, _ := runtime.ConstructRequest(requestArgs, true)
@@ -164,10 +174,10 @@ func decodeFileBytes(b []byte) (decodedEntry, error) {
 	}
 }
 
-func readEntry(index int64, fp *os.File) (decodedEntry, error) {
+func readEntry(index int64, fp *os.File, debugLog bool) (decodedEntry, error) {
 	buf := make([]byte, entrySize)
 	n, err := fp.ReadAt(buf, index)
-	if runtime.Config.Debug {
+	if runtime.Config.Debug && debugLog {
 		log.Printf("Entry bytes: % x\n", buf)
 	}
 	if err != nil {
@@ -189,7 +199,7 @@ func resolveEntry(index int64, fp *os.File, key string) (decodedEntry, error) {
 	// FIXME: actually this has come up in testing, adjust or remove
 	maxPermittedCollisions := storeMetadata.tableSpace / 10
 	for range maxPermittedCollisions {
-		decoded, err := readEntry(index, fp)
+		decoded, err := readEntry(index, fp, true)
 		if err != nil {
 			if err == io.EOF {
 				// wrap around if needed

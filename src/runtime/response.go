@@ -63,10 +63,7 @@ func (r response[T]) StreamDone() bool {
 
 func (r response[T]) String() string {
 	var body string
-	statusWithMessage := (r.status == Ok ||
-		r.status == InvalidRequest ||
-		r.status == ServerError)
-	if r.hasData && statusWithMessage {
+	if r.hasData || r.status == InvalidRequest || r.status == ServerError {
 		switch d := any(r.data).(type) {
 		case int:
 			body = fmt.Sprintf("%s,%d", r.status, d)

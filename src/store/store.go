@@ -61,11 +61,10 @@ func store(request runtime.Request, fp *os.File) runtime.Response {
 	if !decoded.IsSet {
 		updateEntryBytes(fp, 1)
 		code = 1
-		go checkResize()
+		go checkResizeUp()
 	}
 	index = decoded.Index
-	fp.Seek(index, io.SeekStart)
-	fp.Write(request.EncodeFileBytes())
+	fp.WriteAt(request.EncodeFileBytes(), index)
 	return runtime.ConstructResponse(request, runtime.Ok, code)
 }
 
@@ -200,7 +199,7 @@ func clear(request runtime.Request, fp *os.File) runtime.Response {
 	if decoded.IsSet {
 		// if the entry was previously set decrement the entries counter
 		updateEntryBytes(fp, -1)
-		go checkResize()
+		go checkResizeDown()
 		return runtime.ConstructResponse(request, runtime.Ok, 0)
 	}
 	return runtime.ConstructResponse(request, runtime.NotFound, 0)
@@ -223,7 +222,7 @@ func keys(request runtime.Request, fp *os.File, i int) runtime.Response {
 	if storeMetadata.size < index {
 		return runtime.ConstructResponse(request, runtime.StreamDone, 0)
 	}
-	decoded, err := readEntry(index, fp)
+	decoded, err := readEntry(index, fp, false)
 	if err != nil && err != io.EOF {
 		return runtime.ConstructResponse(
 			request,
@@ -242,7 +241,7 @@ func values(request runtime.Request, fp *os.File, i int) runtime.Response {
 	if storeMetadata.size < index {
 		return runtime.ConstructResponse(request, runtime.StreamDone, 0)
 	}
-	decoded, err := readEntry(index, fp)
+	decoded, err := readEntry(index, fp, false)
 	if err != nil && err != io.EOF {
 		return runtime.ConstructResponse(
 			request,
@@ -266,7 +265,7 @@ func items(request runtime.Request, fp *os.File, i int) runtime.Response {
 	if storeMetadata.size < index {
 		return runtime.ConstructResponse(request, runtime.StreamDone, 0)
 	}
-	decoded, err := readEntry(index, fp)
+	decoded, err := readEntry(index, fp, false)
 	if err != nil && err != io.EOF {
 		return runtime.ConstructResponse(
 			request,
@@ -325,59 +324,55 @@ func resize(request runtime.Request, fp *os.File) runtime.Response {
 
 	nextIndex := make(chan int64)
 	resChannel := make(chan runtime.Response)
-	defer close(resChannel)
 	var wg sync.WaitGroup
 	var tempMutex sync.Mutex
+	defer close(resChannel)
 	go func() {
 		defer close(nextIndex)
 		for i := entrySize; i < storeMetadata.size; i += entrySize {
 			nextIndex <- i
 		}
 	}()
-	go func() {
-		for range workerCount {
-			wg.Go(func() {
-				for index := range nextIndex {
-					decodedEntry, err := readEntry(index, fp)
-					if err != nil {
-						resChannel <- runtime.ConstructResponse(
-							request,
-							runtime.ServerError,
-							err.Error(),
-						)
-					}
-					if !decodedEntry.IsSet {
-						continue
-					}
-					newHash := hashKey(decodedEntry.Key, int64(newTableSpace))
-					newIndex := entryIndex(newHash)
-					tempMutex.Lock()
-					newDecodedEntry, err := resolveEntry(
-						newIndex,
-						temp_fp,
-						decodedEntry.Key,
+	for range workerCount {
+		wg.Go(func() {
+			for index := range nextIndex {
+				decodedEntry, err := readEntry(index, fp, false)
+				if err != nil {
+					resChannel <- runtime.ConstructResponse(
+						request,
+						runtime.ServerError,
+						err.Error(),
 					)
-					if err != nil {
-						resChannel <- runtime.ConstructResponse(
-							request,
-							runtime.ServerError,
-							err.Error(),
-						)
-					}
-					newIndex = newDecodedEntry.Index
-					temp_fp.Seek(newIndex, io.SeekStart)
-					fp.Write(request.EncodeFileBytes())
-					tempMutex.Unlock()
 				}
-			})
-		}
-		resChannel <- runtime.ConstructResponse(
-			request,
-			runtime.Ok,
-			0,
-		)
+				if !decodedEntry.IsSet {
+					continue
+				}
+				newHash := hashKey(decodedEntry.Key, int64(newTableSpace))
+				newIndex := entryIndex(newHash)
+				fmt.Println(decodedEntry.Key, newHash, newIndex)
+				tempMutex.Lock()
+				newDecodedEntry, err := resolveEntry(
+					newIndex,
+					temp_fp,
+					decodedEntry.Key,
+				)
+				if err != nil {
+					resChannel <- runtime.ConstructResponse(
+						request,
+						runtime.ServerError,
+						err.Error(),
+					)
+				}
+				newIndex = newDecodedEntry.Index
+				temp_fp.WriteAt(request.EncodeFileBytes(), newIndex)
+				tempMutex.Unlock()
+			}
+		})
+	}
+	go func() {
+		wg.Wait()
+		resChannel <- runtime.ConstructResponse(request, runtime.Ok, 0)
 	}()
-	wg.Wait()
 	response := <-resChannel
 	// if no errors, replace with new file
 	if response.GetStatus() == runtime.Ok {

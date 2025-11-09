@@ -392,6 +392,7 @@ func resize(request runtime.Request) runtime.Response {
 		})
 	}
 	go func() {
+		// block until done then send OK to channel
 		wg.Wait()
 		resChannel <- runtime.ConstructResponse(request, runtime.Ok, 0)
 	}()

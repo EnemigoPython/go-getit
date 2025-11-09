@@ -2,7 +2,6 @@ package runtime
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -51,6 +50,7 @@ type _Config struct {
 	Debug     bool
 	NoLog     bool
 	StorePath string
+	TempPath  string
 	LogPath   string
 }
 
@@ -60,29 +60,24 @@ func SocketAddress() string {
 	return fmt.Sprintf("127.0.0.1:%d", Config.Port)
 }
 
-func getStorePath(storeName string) string {
-	exePath, err := os.Executable()
-	if err != nil {
-		log.Fatal(err)
-	}
-	exeDir := filepath.Dir(exePath)
-	storePath := filepath.Join(exeDir, fmt.Sprintf("%s.bin", storeName))
+func getStorePath(absDir string, storeName string) string {
+	storePath := filepath.Join(absDir, fmt.Sprintf("%s.bin", storeName))
 	return storePath
 }
 
-func getLogPath(storeName string, debug bool) string {
-	exePath, err := os.Executable()
-	if err != nil {
-		log.Fatal(err)
-	}
-	exeDir := filepath.Dir(exePath)
+func getTempPath(absDir string, storeName string) string {
+	tempPath := filepath.Join(absDir, fmt.Sprintf("%s.temp.bin", storeName))
+	return tempPath
+}
+
+func getLogPath(absDir string, storeName string, debug bool) string {
 	var logName string
 	if debug {
 		logName = fmt.Sprintf("%s.debug.log", storeName)
 	} else {
 		logName = fmt.Sprintf("%s.log", storeName)
 	}
-	logPath := filepath.Join(exeDir, logName)
+	logPath := filepath.Join(absDir, logName)
 	return logPath
 }
 
@@ -97,14 +92,20 @@ func ParseConfig(
 	if err != nil {
 		return _Config{}, err
 	}
+	absPath, err := os.Executable()
+	if err != nil {
+		return _Config{}, err
+	}
+	absDir := filepath.Dir(absPath)
 	Config = _Config{
 		RunTime:   runTime,
 		Port:      port,
 		StoreName: storeName,
 		Debug:     debug,
 		NoLog:     noLog,
-		StorePath: getStorePath(storeName),
-		LogPath:   getLogPath(storeName, debug),
+		StorePath: getStorePath(absDir, storeName),
+		TempPath:  getTempPath(absDir, storeName),
+		LogPath:   getLogPath(absDir, storeName, debug),
 	}
 	return Config, nil
 }

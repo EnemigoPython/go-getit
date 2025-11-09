@@ -37,7 +37,7 @@ func OpenStore() error {
 }
 
 func store(request runtime.Request, fp *os.File) runtime.Response {
-	hash := hashKey(request.GetKey())
+	hash := hashKey(request.GetKey(), storeMetadata.tableSpace)
 	index := entryIndex(hash)
 	var code int // 0=overwrite value, 1=new value
 	if runtime.Config.Debug {
@@ -74,7 +74,7 @@ func arithmeticOperation(
 	fp *os.File,
 	a runtime.ArithmeticType,
 ) runtime.Response {
-	hash := hashKey(request.GetKey())
+	hash := hashKey(request.GetKey(), storeMetadata.tableSpace)
 	index := entryIndex(hash)
 	if runtime.Config.Debug {
 		log.Printf("Hash: %d, Index: %d\n", hash, index)
@@ -141,7 +141,7 @@ func sub(request runtime.Request, fp *os.File) runtime.Response {
 }
 
 func load(request runtime.Request, fp *os.File) runtime.Response {
-	hash := hashKey(request.GetKey())
+	hash := hashKey(request.GetKey(), storeMetadata.tableSpace)
 	index := entryIndex(hash)
 	if runtime.Config.Debug {
 		log.Printf("Hash: %d, Index: %d\n", hash, index)
@@ -174,7 +174,7 @@ func load(request runtime.Request, fp *os.File) runtime.Response {
 }
 
 func clear(request runtime.Request, fp *os.File) runtime.Response {
-	hash := hashKey(request.GetKey())
+	hash := hashKey(request.GetKey(), storeMetadata.tableSpace)
 	index := entryIndex(hash)
 	if runtime.Config.Debug {
 		log.Printf("Hash: %d, Index: %d\n", hash, index)
@@ -305,11 +305,88 @@ func resize(request runtime.Request, fp *os.File) runtime.Response {
 			"Resize outside acceptable threshold",
 		)
 	}
-	return runtime.ConstructResponse(
-		request,
-		runtime.Ok,
-		0,
-	)
+	// create new file for overwrite
+	filePath := runtime.Config.TempPath
+	temp_fp, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDONLY, 0644)
+	if err != nil {
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			"Error opening temp file",
+		)
+	}
+	defer temp_fp.Close()
+	newFileSize := (int64(newTableSpace) * entrySize) + entrySize
+	// format in case an artifact already existed
+	temp_fp.Truncate(0)
+	temp_fp.Truncate(newFileSize)
+	// write current entries to new file metadata
+	updateEntryBytes(temp_fp, storeMetadata.entries)
+
+	nextIndex := make(chan int64)
+	resChannel := make(chan runtime.Response)
+	defer close(resChannel)
+	var wg sync.WaitGroup
+	var tempMutex sync.Mutex
+	go func() {
+		defer close(nextIndex)
+		for i := entrySize; i < storeMetadata.size; i += entrySize {
+			nextIndex <- i
+		}
+	}()
+	go func() {
+		for range workerCount {
+			wg.Go(func() {
+				for index := range nextIndex {
+					decodedEntry, err := readEntry(index, fp)
+					if err != nil {
+						resChannel <- runtime.ConstructResponse(
+							request,
+							runtime.ServerError,
+							err.Error(),
+						)
+					}
+					if !decodedEntry.IsSet {
+						continue
+					}
+					newHash := hashKey(decodedEntry.Key, int64(newTableSpace))
+					newIndex := entryIndex(newHash)
+					tempMutex.Lock()
+					newDecodedEntry, err := resolveEntry(
+						newIndex,
+						temp_fp,
+						decodedEntry.Key,
+					)
+					if err != nil {
+						resChannel <- runtime.ConstructResponse(
+							request,
+							runtime.ServerError,
+							err.Error(),
+						)
+					}
+					newIndex = newDecodedEntry.Index
+					temp_fp.Seek(newIndex, io.SeekStart)
+					fp.Write(request.EncodeFileBytes())
+					tempMutex.Unlock()
+				}
+			})
+		}
+		resChannel <- runtime.ConstructResponse(
+			request,
+			runtime.Ok,
+			0,
+		)
+	}()
+	wg.Wait()
+	response := <-resChannel
+	// if no errors, replace with new file
+	if response.GetStatus() == runtime.Ok {
+		os.Rename(runtime.Config.TempPath, runtime.Config.StoreName)
+		storeMetadata.size = newFileSize
+		storeMetadata.tableSpace = int64(newTableSpace)
+		storeMetadata.setRatio = newSetRatio
+	}
+	return response
 }
 
 func count(request runtime.Request) runtime.Response {
@@ -400,7 +477,8 @@ func ProcessRequest(request runtime.Request) runtime.Response {
 	case runtime.ClearAll:
 		return writeOperation(clearAll, request)
 	case runtime.Resize:
-		return writeOperation(resize, request)
+		// uses a temp file so no need to block readers
+		return readOperation(resize, request)
 	case runtime.Count:
 		return count(request)
 	case runtime.Size:

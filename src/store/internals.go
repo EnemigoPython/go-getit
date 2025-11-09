@@ -105,12 +105,12 @@ func entryIndex(i int64) int64 {
 }
 
 // Implements DJB2 hashing
-func hashKey(key string) int64 {
+func hashKey(key string, limit int64) int64 {
 	var hash uint64 = 5381
 	for _, r := range key {
 		hash = ((hash << 5) + hash) + uint64(r)
 	}
-	return (int64(hash) % storeMetadata.tableSpace) + 1
+	return (int64(hash) % limit) + 1
 }
 
 type DecodeFileError struct {

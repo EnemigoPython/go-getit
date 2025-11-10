@@ -213,8 +213,7 @@ func readEntry(index int64, fp *os.File, debugLog bool) (decodedEntry, error) {
 
 func resolveEntry(index int64, fp *os.File, key string) (decodedEntry, error) {
 	// this should not be realistically exceeded unless there is a bad failure
-	// FIXME: actually this has come up in testing, adjust or remove
-	maxPermittedCollisions := storeMetadata.tableSpace / 10
+	maxPermittedCollisions := storeMetadata.tableSpace / 2
 	for range maxPermittedCollisions {
 		decoded, err := readEntry(index, fp, true)
 		if err != nil {

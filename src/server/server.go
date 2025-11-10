@@ -65,7 +65,8 @@ func Run() {
 						continue
 					}
 					log.Println(response)
-					responseBytes := response.EncodeResponse()
+					responseBytes := response.Encode()
+					// responseBytes := runtime.EncodeDelimited(response)
 					if runtime.Config.Debug {
 						log.Printf("Response bytes: % x\n", responseBytes)
 					}
@@ -76,7 +77,7 @@ func Run() {
 
 				// now log & send captured end stream
 				log.Println(endStream)
-				responseBytes := endStream.EncodeResponse()
+				responseBytes := endStream.Encode()
 				if runtime.Config.Debug {
 					log.Printf("Response bytes: % x\n", responseBytes)
 				}
@@ -87,7 +88,7 @@ func Run() {
 			// non-streamed response
 			response := store.ProcessRequest(request)
 			log.Println(response)
-			responseBytes := response.EncodeResponse()
+			responseBytes := response.Encode()
 			if runtime.Config.Debug {
 				log.Printf("Response bytes: % x\n", responseBytes)
 			}

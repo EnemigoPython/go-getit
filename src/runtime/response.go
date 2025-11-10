@@ -51,7 +51,7 @@ type response[T types.IntOrString] struct {
 type Response interface {
 	GetStatus() Status
 	StreamDone() bool
-	EncodeResponse() []byte
+	Encode() []byte
 	DataPayload() string
 }
 
@@ -76,7 +76,7 @@ func (r response[T]) String() string {
 	return fmt.Sprintf("Response(%d)<%s>", r.id, body)
 }
 
-func (r response[T]) EncodeResponse() []byte {
+func (r response[T]) Encode() []byte {
 	buf := new(bytes.Buffer)
 	buf.WriteByte(byte(r.status))
 	statusWithPayload := r.status == Ok || r.status == InvalidRequest

@@ -15,7 +15,7 @@ func MakeRequest(request runtime.Request) {
 	}
 	defer conn.Close()
 
-	requestBytes := request.EncodeRequest()
+	requestBytes := request.Encode()
 
 	// Send a message
 	_, err = conn.Write(requestBytes)

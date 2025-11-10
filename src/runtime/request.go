@@ -151,7 +151,7 @@ type Request interface {
 	IsStream() bool
 	HasData() bool
 	ArithmeticOperation(ArithmeticType, int) (int, error)
-	EncodeRequest() []byte
+	Encode() []byte
 	EncodeFileBytes() []byte
 }
 
@@ -237,7 +237,7 @@ func (r request[T]) writeDataBytes(buf *bytes.Buffer, pad bool) {
 	}
 }
 
-func (r request[T]) EncodeRequest() []byte {
+func (r request[T]) Encode() []byte {
 	buf := new(bytes.Buffer)
 	buf.WriteByte(byte(r.action))
 	switch r.action {

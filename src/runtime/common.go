@@ -5,8 +5,32 @@ import (
 	"encoding/binary"
 )
 
-// Handles message boundary detecion for requests/responses
+// Handles message boundary detection for requests/responses
 type Framer interface {
+	Encode() []byte
+}
+
+func EncodeDelimited(f Framer) []byte {
+	b := f.Encode()
+	msg := make([]byte, 2+len(b))
+	binary.BigEndian.PutUint16(msg, uint16(len(b)))
+	copy(msg[2:], b)
+	return msg
+}
+
+func DelimitBytes(b []byte) <-chan []byte {
+	out := make(chan []byte)
+	bytesLen := uint16(len(b))
+	var index uint16
+	go func() {
+		defer close(out)
+		for index < bytesLen {
+			header := binary.BigEndian.Uint16(b[index : index+1])
+			out <- b[index+2 : index+header+2]
+			index += header + 2
+		}
+	}()
+	return out
 }
 
 // Write encoded bytes for an entry key with optional padding

@@ -110,11 +110,7 @@ func copy(request runtime.Request, fp *os.File) runtime.Response {
 		)
 	}
 	if !decodedFrom.IsSet {
-		return runtime.ConstructResponse(
-			request,
-			runtime.NotFound,
-			0,
-		)
+		return runtime.ConstructResponse(request, runtime.NotFound, 0)
 	}
 	decodedTo, err := resolveEntry(toIndex, fp, toKey)
 	if err != nil {

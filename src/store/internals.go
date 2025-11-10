@@ -105,8 +105,10 @@ func checkResizeDown() {
 }
 
 // Write an update to number of entries in file metadata
-func updateEntryBytes(fp *os.File, update int64) {
-	storeMetadata.entries += update
+func updateEntryBytes(fp *os.File, update int64, newFile bool) {
+	if !newFile {
+		storeMetadata.entries += update
+	}
 	fp.Seek(0, io.SeekStart)
 	binary.Write(fp, binary.BigEndian, int32(storeMetadata.entries))
 }

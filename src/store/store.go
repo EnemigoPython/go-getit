@@ -59,7 +59,7 @@ func store(request runtime.Request, fp *os.File) runtime.Response {
 		)
 	}
 	if !decoded.IsSet {
-		updateEntryBytes(fp, 1)
+		updateEntryBytes(fp, 1, false)
 		code = 1
 		go checkResizeUp()
 	}
@@ -198,7 +198,7 @@ func clear(request runtime.Request, fp *os.File) runtime.Response {
 	fp.Write([]byte{0}) // unset header byte
 	if decoded.IsSet {
 		// if the entry was previously set decrement the entries counter
-		updateEntryBytes(fp, -1)
+		updateEntryBytes(fp, -1, false)
 		go checkResizeDown()
 		return runtime.ConstructResponse(request, runtime.Ok, 0)
 	}
@@ -213,7 +213,7 @@ func clearAll(request runtime.Request, fp *os.File) runtime.Response {
 	formatLen := storeMetadata.minSize - entrySize
 	buf := make([]byte, formatLen)
 	fp.WriteAt(buf, entrySize)
-	updateEntryBytes(fp, -storeMetadata.entries)
+	updateEntryBytes(fp, -storeMetadata.entries, false)
 	return runtime.ConstructResponse(request, runtime.Ok, 0)
 }
 
@@ -331,7 +331,7 @@ func resize(request runtime.Request) runtime.Response {
 	temp_fp.Truncate(newFileSize)
 
 	// write current entries to new file metadata
-	updateEntryBytes(temp_fp, storeMetadata.entries)
+	updateEntryBytes(temp_fp, storeMetadata.entries, true)
 
 	nextIndex := make(chan int64)
 	resChannel := make(chan runtime.Response, 1)
@@ -363,9 +363,14 @@ func resize(request runtime.Request) runtime.Response {
 				newHash := hashKey(decodedEntry.Key, int64(newTableSpace))
 				newIndex := entryIndex(newHash)
 				if runtime.Config.Debug {
-					log.Printf(
-						"Key '%s' (index %d)->(hash %d, index %d)",
+					oldHash := hashKey(
 						decodedEntry.Key,
+						storeMetadata.tableSpace,
+					)
+					log.Printf(
+						"Key '%s' (hash %d, index %d)->(hash %d, index %d)",
+						decodedEntry.Key,
+						oldHash,
 						index,
 						newHash,
 						newIndex,

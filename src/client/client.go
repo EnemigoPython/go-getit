@@ -33,7 +33,11 @@ func MakeRequest(request runtime.Request) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		response := runtime.DecodeResponse(buf[:n])
+		responseBytes := buf[:n]
+		if runtime.Config.Debug {
+			log.Printf("Response bytes: % x\n", responseBytes)
+		}
+		response := runtime.DecodeResponse(responseBytes)
 		if runtime.Config.Debug {
 			fmt.Println(response)
 		}

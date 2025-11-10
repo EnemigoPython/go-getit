@@ -68,6 +68,78 @@ func store(request runtime.Request, fp *os.File) runtime.Response {
 	return runtime.ConstructResponse(request, runtime.Ok, code)
 }
 
+func copy(request runtime.Request, fp *os.File) runtime.Response {
+	fromHash := hashKey(request.GetKey(), storeMetadata.tableSpace)
+	fromIndex := entryIndex(fromHash)
+	if runtime.Config.Debug {
+		log.Printf("Origin hash: %d, Index: %d\n", fromHash, fromIndex)
+	}
+	if storeMetadata.size < fromIndex {
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			"Origin index outside of file",
+		)
+	}
+	toKey, err := request.GetStringData()
+	if err != nil {
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			err.Error(),
+		)
+	}
+	toHash := hashKey(toKey, storeMetadata.tableSpace)
+	toIndex := entryIndex(toHash)
+	if runtime.Config.Debug {
+		log.Printf("Destination hash: %d, Index: %d\n", toHash, toIndex)
+	}
+	if storeMetadata.size < toIndex {
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			"Destination index outside of file",
+		)
+	}
+	decodedFrom, err := resolveEntry(fromIndex, fp, request.GetKey())
+	if err != nil {
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			err.Error(),
+		)
+	}
+	if !decodedFrom.IsSet {
+		return runtime.ConstructResponse(
+			request,
+			runtime.NotFound,
+			0,
+		)
+	}
+	decodedTo, err := resolveEntry(toIndex, fp, toKey)
+	if err != nil {
+		return runtime.ConstructResponse(
+			request,
+			runtime.ServerError,
+			err.Error(),
+		)
+	}
+	if !decodedTo.IsSet {
+		updateEntryBytes(fp, 1, false)
+		go checkResizeUp()
+	}
+	toIndex = decodedTo.Index
+	decodedFrom.Key = toKey
+	fp.WriteAt(decodedFrom.toBytes(), toIndex)
+	switch decodedFrom.ValueType {
+	case typeInt:
+		return runtime.ConstructResponse(request, runtime.Ok, decodedFrom.Int)
+	case typeString:
+		return runtime.ConstructResponse(request, runtime.Ok, decodedFrom.Str)
+	}
+	panic("Unreachable")
+}
+
 func arithmeticOperation(
 	request runtime.Request,
 	fp *os.File,
@@ -502,6 +574,8 @@ func ProcessRequest(request runtime.Request) runtime.Response {
 	switch request.GetAction() {
 	case runtime.Store:
 		return writeOperation(store, request)
+	case runtime.Copy:
+		return writeOperation(copy, request)
 	case runtime.Add:
 		return writeOperation(add, request)
 	case runtime.Sub:

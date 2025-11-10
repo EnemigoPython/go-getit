@@ -23,6 +23,7 @@ type Action byte
 
 const (
 	Store Action = iota
+	Copy
 	Add
 	Sub
 	Load
@@ -48,6 +49,7 @@ const (
 func (a Action) String() string {
 	return [...]string{
 		"Store",
+		"Copy",
 		"Add",
 		"Sub",
 		"Load",
@@ -67,6 +69,7 @@ func (a Action) String() string {
 func (a Action) ToLower() string {
 	return [...]string{
 		"store",
+		"copy",
 		"add",
 		"sub",
 		"load",
@@ -89,6 +92,8 @@ func parseAction(s string) (Action, error) {
 		return Action(0), RequestParseError{errorStr: "invalid action: <empty>"}
 	case Store.ToLower():
 		return Store, nil
+	case Copy.ToLower():
+		return Copy, nil
 	case Add.ToLower():
 		return Add, nil
 	case Sub.ToLower():
@@ -187,6 +192,7 @@ func (r request[T]) HasData() bool {
 	switch r.action {
 	case
 		Store,
+		Copy,
 		Add,
 		Sub,
 		Load,
@@ -235,7 +241,7 @@ func (r request[T]) EncodeRequest() []byte {
 	buf := new(bytes.Buffer)
 	buf.WriteByte(byte(r.action))
 	switch r.action {
-	case Store, Add, Sub:
+	case Store, Copy, Add, Sub:
 		r.writeKeyBytes(buf, false)
 		r.writeDataBytes(buf, false)
 	case Load, Clear, Space:
@@ -265,6 +271,15 @@ func (r request[T]) String() string {
 			body = fmt.Sprintf("%s[%s:%d]", r.action, r.key, d)
 		case string:
 			body = fmt.Sprintf("%s[%s:'%s']", r.action, r.key, d)
+		default:
+			panic("Unreachable")
+		}
+	case Copy:
+		switch d := any(r.data).(type) {
+		case int:
+			body = fmt.Sprintf("%s[%s:%d]", r.action, r.key, d)
+		case string:
+			body = fmt.Sprintf("%s[%s:%s]", r.action, r.key, d)
 		default:
 			panic("Unreachable")
 		}
@@ -334,6 +349,37 @@ func ConstructRequest(args []string, internal bool) (Request, error) {
 				id:       generateId(),
 			}, nil
 		}
+		if len(data) > maxStringLen {
+			return request[int]{}, RequestParseError{
+				errorStr: fmt.Sprintf(
+					"data must be less than %d characters",
+					maxStringLen,
+				),
+			}
+		}
+		return request[string]{
+			key:      key,
+			data:     data,
+			action:   action,
+			internal: internal,
+			id:       generateId(),
+		}, nil
+	case Copy:
+		if len(args) < 3 {
+			return request[int]{}, RequestParseError{
+				errorStr: "need 3 args for store",
+			}
+		}
+		key = args[1]
+		if len(key) > maxStringLen {
+			return request[int]{}, RequestParseError{
+				errorStr: fmt.Sprintf(
+					"key must be less than %d characters",
+					maxStringLen,
+				),
+			}
+		}
+		data = args[2]
 		if len(data) > maxStringLen {
 			return request[int]{}, RequestParseError{
 				errorStr: fmt.Sprintf(
@@ -506,7 +552,7 @@ func decodeStringData(b []byte) string {
 func DecodeRequest(b []byte) Request {
 	action := Action(b[0])
 	switch action {
-	case Store, Add, Sub:
+	case Store, Copy, Add, Sub:
 		key := decodeKey(b)
 		offset := len(key) + 2
 		if b[offset] == 0 {

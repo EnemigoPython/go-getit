@@ -11,6 +11,7 @@ To get started run the binary with the flag `-runtime=server` to create a server
 ### Client
 - `store X Y` to store value Y in X (value can be a string or 32 bit number, strings are limited to 31 ASCII chars) -> returns `1` if new entry or `0` if data overwritten
 - `load X` to get value associated with key X (or empty return if not found)
+- `copy X Y` to copy the value of X into Y -> returns value of X (or empty return if X not found, Y can be set or unset)
 - `add X Y` to add Y to the value of X -> returns new value, or empty return if not found, or invalid request error if X is a string
 - `sub X Y` to subtract Y from the value of X -> returns new value, or empty return if not found, or invalid request error if X is a string
 - `clear {X}` to delete key X (or omit to clear all) -> returns `0` if success or empty if not found
@@ -20,6 +21,7 @@ To get started run the binary with the flag `-runtime=server` to create a server
 - `count` to get number of entries in the store
 - `size` to get size of file in bytes
 - `space {current/empty}` to get maximum number of entries possible in current file size -> empty gets unused table space, default current
+- `resize {X}` to manually resize the store to have X table space (the store is resized automatically when more space is needed)
 - `exit` shuts down the server
 
 ### Config Flags

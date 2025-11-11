@@ -15,7 +15,10 @@ func MakeRequest(request runtime.Request) {
 	}
 	defer conn.Close()
 
-	requestBytes := request.Encode()
+	requestBytes := runtime.Frame(request)
+	if runtime.Config.Debug {
+		log.Printf("Request bytes: % x\n", requestBytes)
+	}
 
 	// Send a message
 	_, err = conn.Write(requestBytes)
@@ -33,22 +36,29 @@ func MakeRequest(request runtime.Request) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		responseBytes := buf[:n]
+		rawBytes := buf[:n]
 		if runtime.Config.Debug {
-			log.Printf("Response bytes: % x\n", responseBytes)
+			log.Printf("Raw bytes: % x\n", rawBytes)
 		}
-		response := runtime.DecodeResponse(responseBytes)
-		if runtime.Config.Debug {
-			fmt.Println(response)
-		}
+		done := false
+		for frame := range runtime.FrameChannel(rawBytes) {
+			response := runtime.DecodeResponse(frame)
+			if runtime.Config.Debug {
+				fmt.Println(response)
+			}
 
-		// don't read stream done to stdout
-		if response.GetStatus() != runtime.StreamDone {
-			// read all other responses
-			fmt.Println(response.DataPayload())
-		}
+			// don't read stream done to stdout
+			if response.GetStatus() != runtime.StreamDone {
+				// read all other responses
+				fmt.Println(response.DataPayload())
+			}
 
-		if !request.IsStream() || response.GetStatus() != runtime.Ok {
+			if !request.IsStream() || response.GetStatus() != runtime.Ok {
+				done = true
+				break
+			}
+		}
+		if done {
 			break
 		}
 	}

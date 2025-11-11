@@ -25,7 +25,7 @@ func FrameChannel(b []byte) <-chan []byte {
 	go func() {
 		defer close(out)
 		for index < bytesLen {
-			header := binary.BigEndian.Uint16(b[index : index+1])
+			header := binary.BigEndian.Uint16(b[index : index+2])
 			out <- b[index+2 : index+header+2]
 			index += header + 2
 		}

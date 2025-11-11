@@ -10,6 +10,7 @@ type Framer interface {
 	Encode() []byte
 }
 
+// Encode payload and prepend length for frame
 func Frame(f Framer) []byte {
 	b := f.Encode()
 	msg := make([]byte, 2+len(b))
@@ -18,6 +19,7 @@ func Frame(f Framer) []byte {
 	return msg
 }
 
+// Read and stream frames
 func FrameChannel(b []byte) <-chan []byte {
 	out := make(chan []byte)
 	bytesLen := uint16(len(b))

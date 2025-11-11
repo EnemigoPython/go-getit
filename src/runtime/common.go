@@ -10,7 +10,7 @@ type Framer interface {
 	Encode() []byte
 }
 
-func EncodeDelimited(f Framer) []byte {
+func Frame(f Framer) []byte {
 	b := f.Encode()
 	msg := make([]byte, 2+len(b))
 	binary.BigEndian.PutUint16(msg, uint16(len(b)))
@@ -18,7 +18,7 @@ func EncodeDelimited(f Framer) []byte {
 	return msg
 }
 
-func DelimitBytes(b []byte) <-chan []byte {
+func FrameChannel(b []byte) <-chan []byte {
 	out := make(chan []byte)
 	bytesLen := uint16(len(b))
 	var index uint16
